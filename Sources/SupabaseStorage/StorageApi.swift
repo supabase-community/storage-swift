@@ -43,7 +43,58 @@ public class StorageApi {
         }
 
         let session = URLSession.shared
-        let dataTask = session.dataTask(with: request, completionHandler: { [unowned self] (data, response, error) -> Void in
+        let dataTask = session.dataTask(with: request, completionHandler: { (data, response, error) -> Void in
+            if let error = error {
+                completion(.failure(error))
+                return
+            }
+
+            if let resp = response as? HTTPURLResponse {
+                if let data = data {
+                    if jsonSerialization {
+                        do {
+                            let json = try JSONSerialization.jsonObject(with: data, options: [])
+                            completion(.success(try self.parse(response: json, statusCode: resp.statusCode)))
+                        } catch {
+                            completion(.failure(error))
+                            return
+                        }
+                    } else {
+                        if let dataString = String(data: data, encoding: .utf8) {
+                            completion(.success(dataString))
+                            return
+                        }
+                    }
+                }
+            } else {
+                completion(.failure(StorageError(message: "failed to get response")))
+            }
+
+        })
+
+        dataTask.resume()
+    }
+
+    internal func fetch(url: URL, method: HTTPMethod = .post, formData: FormData, headers _: [String: String]? = nil, fileOptions: FileOptions? = nil, jsonSerialization: Bool = true, completion: @escaping (Result<Any, Error>) -> Void) {
+        var request = URLRequest(url: url)
+        request.httpMethod = method.rawValue
+        request.setValue(formData.contentType, forHTTPHeaderField: "Content-Type")
+
+        if let fileOptions = fileOptions {
+            request.setValue(fileOptions.cacheControl, forHTTPHeaderField: "cacheControl")
+        }
+
+        request.setValue(headers["Authorization"], forHTTPHeaderField: "Authorization")
+//        if var headers = headers {
+//            headers.merge(self.headers) { $1 }
+//            headers["Content-Type"] = formData.contentType
+//            request.allHTTPHeaderFields = headers
+//        } else {
+//            request.allHTTPHeaderFields = self.headers
+//        }
+
+        let session = URLSession.shared
+        let dataTask = session.uploadTask(with: request, from: formData.data, completionHandler: { (data, response, error) -> Void in
             if let error = error {
                 completion(.failure(error))
                 return
