@@ -5,6 +5,13 @@ public struct File: Hashable, Equatable {
     public var data: Data
     public var fileName: String?
     public var contentType: String?
+
+    public init(name: String, data: Data, fileName: String?, contentType: String?) {
+        self.name = name
+        self.data = data
+        self.fileName = fileName
+        self.contentType = contentType
+    }
 }
 
 public class FormData {
