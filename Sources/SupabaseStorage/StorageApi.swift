@@ -75,23 +75,24 @@ public class StorageApi {
         dataTask.resume()
     }
 
-    internal func fetch(url: URL, method: HTTPMethod = .post, formData: FormData, headers _: [String: String]? = nil, fileOptions: FileOptions? = nil, jsonSerialization: Bool = true, completion: @escaping (Result<Any, Error>) -> Void) {
+    internal func fetch(url: URL, method: HTTPMethod = .post, formData: FormData, headers: [String: String]? = nil, fileOptions: FileOptions? = nil, jsonSerialization: Bool = true, completion: @escaping (Result<Any, Error>) -> Void) {
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
-        request.setValue(formData.contentType, forHTTPHeaderField: "Content-Type")
 
         if let fileOptions = fileOptions {
             request.setValue(fileOptions.cacheControl, forHTTPHeaderField: "cacheControl")
         }
 
-        request.setValue(headers["Authorization"], forHTTPHeaderField: "Authorization")
-//        if var headers = headers {
-//            headers.merge(self.headers) { $1 }
-//            headers["Content-Type"] = formData.contentType
-//            request.allHTTPHeaderFields = headers
-//        } else {
-//            request.allHTTPHeaderFields = self.headers
-//        }
+        var allHTTPHeaderFields = self.headers
+        if let headers = headers {
+            allHTTPHeaderFields.merge(headers) { $1 }
+        }
+
+        allHTTPHeaderFields.forEach { key, value in
+            request.setValue(value, forHTTPHeaderField: key)
+        }
+
+        request.setValue(formData.contentType, forHTTPHeaderField: "Content-Type")
 
         let session = URLSession.shared
         let dataTask = session.uploadTask(with: request, from: formData.data, completionHandler: { (data, response, error) -> Void in
