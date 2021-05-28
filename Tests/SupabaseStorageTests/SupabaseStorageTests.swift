@@ -4,6 +4,7 @@ import XCTest
 
 final class SupabaseStorageTests: XCTestCase {
     let storage = SupabaseStorageClient(url: storageURL(), headers: ["Authorization": token()])
+    let bucket = "Test"
 
     static func token() -> String {
         if let token = ProcessInfo.processInfo.environment["Authorization"] {
@@ -21,29 +22,24 @@ final class SupabaseStorageTests: XCTestCase {
         }
     }
 
-    func testUploadFile() {
-        let e = expectation(description: "testUploadFile")
-        let data = try! Data(contentsOf: URL(string: "https://raw.githubusercontent.com/satishbabariya/storage-swift/main/README.md")!)
+    func testCreateBucket() {
+        let e = expectation(description: "testCreateBucket")
 
-        let file = File(name: "README.md", data: data, fileName: "README.md", contentType: "text/html")
-
-        print(file)
-
-        storage.from(id: "Demo").upload(path: "\(UUID().uuidString).md", file: file, fileOptions: FileOptions(cacheControl: "3600")) { result in
+        storage.createBucket(id: bucket) { result in
             switch result {
-            case let .success(res):
-                print(res)
-                XCTAssertEqual(true, true)
+            case let .success(buckets):
+                print(buckets)
+                XCTAssertEqual(buckets.count >= 0, true)
             case let .failure(error):
                 print(error.localizedDescription)
-                XCTFail("testUploadFile failed: \(error.localizedDescription)")
+                XCTFail("testCreateBucket failed: \(error.localizedDescription)")
             }
             e.fulfill()
         }
 
         waitForExpectations(timeout: 30) { error in
             if let error = error {
-                XCTFail("testUploadFile failed: \(error.localizedDescription)")
+                XCTFail("testCreateBucket failed: \(error.localizedDescription)")
             }
         }
     }
@@ -70,10 +66,35 @@ final class SupabaseStorageTests: XCTestCase {
         }
     }
 
+    func testUploadFile() {
+        let e = expectation(description: "testUploadFile")
+        let data = try! Data(contentsOf: URL(string: "https://raw.githubusercontent.com/satishbabariya/storage-swift/main/README.md")!)
+
+        let file = File(name: "README.md", data: data, fileName: "README.md", contentType: "text/html")
+
+        storage.from(id: bucket).upload(path: "README.md", file: file, fileOptions: FileOptions(cacheControl: "3600")) { result in
+            switch result {
+            case let .success(res):
+                print(res)
+                XCTAssertEqual(true, true)
+            case let .failure(error):
+                print(error.localizedDescription)
+                XCTFail("testUploadFile failed: \(error.localizedDescription)")
+            }
+            e.fulfill()
+        }
+
+        waitForExpectations(timeout: 30) { error in
+            if let error = error {
+                XCTFail("testUploadFile failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
     func testDownloadFile() {
         let e = expectation(description: "testDownloadFile")
 
-        storage.from(id: "Demo").download(path: "008645EC-1C5B-4BFE-B355-CC442585BA3E.md") { result in
+        storage.from(id: bucket).download(path: "README.md") { result in
             switch result {
             case let .success(url):
                 print(url as Any)

@@ -67,7 +67,7 @@ public class StorageBucketApi: StorageApi {
             return
         }
 
-        fetch(url: url, method: .post, parameters: ["id": id], headers: headers) { result in
+        fetch(url: url, method: .post, parameters: ["id": id, "name": id], headers: headers) { result in
             switch result {
             case let .success(response):
                 guard let dict: [String: Any] = response as? [String: Any] else {
