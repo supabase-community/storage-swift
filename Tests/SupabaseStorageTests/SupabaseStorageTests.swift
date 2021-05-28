@@ -51,9 +51,10 @@ final class SupabaseStorageTests: XCTestCase {
     func testListBuckets() {
         let e = expectation(description: "listBuckets")
 
-        SupabaseStorageClient(url: SupabaseStorageTests.storageURL(), headers: ["Authorization": SupabaseStorageTests.token()]).listBuckets { result in
+        storage.listBuckets { result in
             switch result {
             case let .success(buckets):
+                print(buckets)
                 XCTAssertEqual(buckets.count >= 0, true)
             case let .failure(error):
                 print(error.localizedDescription)
@@ -69,8 +70,31 @@ final class SupabaseStorageTests: XCTestCase {
         }
     }
 
+    func testDownloadFile() {
+        let e = expectation(description: "testDownloadFile")
+
+        storage.from(id: "Demo").download(path: "008645EC-1C5B-4BFE-B355-CC442585BA3E.md") { result in
+            switch result {
+            case let .success(url):
+                print(url as Any)
+                XCTAssertNotNil(url)
+            case let .failure(error):
+                print(error.localizedDescription)
+                XCTFail("testDownloadFile failed: \(error.localizedDescription)")
+            }
+            e.fulfill()
+        }
+
+        waitForExpectations(timeout: 30) { error in
+            if let error = error {
+                XCTFail("testDownloadFile failed: \(error.localizedDescription)")
+            }
+        }
+    }
+
     static var allTests = [
         ("testListBuckets", testListBuckets),
         ("testUploadFile", testUploadFile),
+        ("testDownloadFile", testDownloadFile),
     ]
 }

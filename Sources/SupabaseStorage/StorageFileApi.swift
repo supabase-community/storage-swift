@@ -121,4 +121,26 @@ public class StorageFileApi: StorageApi {
             }
         }
     }
+
+    @discardableResult
+    public func download(path: String, completion: @escaping (Result<Data?, Error>) -> Void) -> URLSessionDataTask? {
+        guard let url = URL(string: "\(url)/object/\(bucketId)/\(path)") else {
+            completion(.failure(StorageError(message: "badURL")))
+            return nil
+        }
+
+        let dataTask = fetch(url: url, parameters: nil) { result in
+            switch result {
+            case let .success(data):
+                guard let data: Data = data as? Data else {
+                    completion(.failure(StorageError(message: "failed to parse response")))
+                    return
+                }
+                completion(.success(data))
+            case let .failure(error):
+                completion(.failure(error))
+            }
+        }
+        return dataTask
+    }
 }
