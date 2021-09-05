@@ -13,6 +13,7 @@ public class StorageBucketApi: StorageApi {
     
     override init(_ config: StorageApiConfig) {
         super.init(config)
+        self.config.headers.merge(["Content-Type": "application/json"]) { $1 }
     }
 
     /// Retrieves the details of all Storage buckets within an existing product.
