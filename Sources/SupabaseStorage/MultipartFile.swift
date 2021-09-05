@@ -59,6 +59,8 @@ extension Data {
             using: String.Encoding.utf8,
             allowLossyConversion: true
         )
-        append(data!)
+        if data != nil {
+            append(data!)
+        }
     }
 }

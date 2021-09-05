@@ -1,13 +1,15 @@
 import Foundation
 
 public class StorageApi {
-    var url: String
-    var headers: [String: String]
+    public var config: StorageApiConfig
 
     init(url: String, headers: [String: String]) {
-        self.url = url
-        self.headers = headers
+        self.config = StorageApiConfig(url: url, headers: headers)
 //        self.headers.merge(["Content-Type": "application/json"]) { $1 }
+    }
+    
+    init(_ config: StorageApiConfig) {
+        self.config = config
     }
 
     internal enum HTTPMethod: String {
@@ -28,10 +30,10 @@ public class StorageApi {
         request.httpMethod = method.rawValue
 
         if var headers = headers {
-            headers.merge(self.headers) { $1 }
+            headers.merge(self.config.headers) { $1 }
             request.allHTTPHeaderFields = headers
         } else {
-            request.allHTTPHeaderFields = self.headers
+            request.allHTTPHeaderFields = self.config.headers
         }
 
         if let parameters = parameters {
@@ -83,7 +85,7 @@ public class StorageApi {
             request.setValue(fileOptions.cacheControl, forHTTPHeaderField: "cacheControl")
         }
 
-        var allHTTPHeaderFields = self.headers
+        var allHTTPHeaderFields = self.config.headers
         if let headers = headers {
             allHTTPHeaderFields.merge(headers) { $1 }
         }
