@@ -144,7 +144,7 @@ public class StorageFileApi: StorageApi {
         sortBy["column"] = options?.sortBy?.column ?? "name"
         sortBy["order"] = options?.sortBy?.order ?? "asc"
 
-        fetch(url: url, method: .post, parameters: ["path": path ?? "", "limit": options?.limit ?? 100, "offset": options?.offset ?? 0], headers: headers) { result in
+        fetch(url: url, method: .post, parameters: ["prefix": path ?? "", "limit": options?.limit ?? 100, "offset": options?.offset ?? 0], headers: headers) { result in
             switch result {
             case let .success(response):
                 guard let arr: [[String: Any]] = response as? [[String: Any]] else {
