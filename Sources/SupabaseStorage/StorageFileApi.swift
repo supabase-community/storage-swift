@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Supabase Storage File API
 public class StorageFileApi: StorageApi {

@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 /// Storage Bucket API
 public class StorageBucketApi: StorageApi {
