@@ -121,10 +121,4 @@ final class SupabaseStorageTests: XCTestCase {
       }
     }
   }
-
-  static var allTests = [
-    ("testListBuckets", testListBuckets),
-    ("testUploadFile", testUploadFile),
-    ("testDownloadFile", testDownloadFile),
-  ]
 }
