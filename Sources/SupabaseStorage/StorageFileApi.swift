@@ -14,208 +14,174 @@ public class StorageFileApi: StorageApi {
   ///   - url: Storage HTTP URL
   ///   - headers: HTTP headers.
   ///   - bucketId: The bucket id to operate on.
-  init(url: String, headers: [String: String], bucketId: String) {
+  init(url: String, headers: [String: String], bucketId: String, http: StorageHTTPClient) {
     self.bucketId = bucketId
-    super.init(url: url, headers: headers)
+    super.init(url: url, headers: headers, http: http)
   }
 
   /// Uploads a file to an existing bucket.
   /// - Parameters:
-  ///   - path: The relative file path. Should be of the format `folder/subfolder/filename.png`. The bucket must already exist before attempting to upload.
+  ///   - path: The relative file path. Should be of the format `folder/subfolder/filename.png`. The
+  /// bucket must already exist before attempting to upload.
   ///   - file: The File object to be stored in the bucket.
   ///   - fileOptions: HTTP headers. For example `cacheControl`
-  ///   - completion: Result<Any, Error>
-  public func upload(
-    path: String, file: File, fileOptions: FileOptions?,
-    completion: @escaping (Result<Any, Error>) -> Void
-  ) {
+  public func upload(path: String, file: File, fileOptions: FileOptions?) async throws -> Any {
     guard let url = URL(string: "\(url)/object/\(bucketId)/\(path)") else {
-      completion(.failure(StorageError(message: "badURL")))
-      return
+      throw StorageError(message: "badURL")
     }
 
     let formData = FormData()
     formData.append(file: file)
 
-    fetch(url: url, method: .post, formData: formData, headers: headers, fileOptions: fileOptions) {
-      result in
-      completion(result)
-    }
+    return try await fetch(
+      url: url,
+      method: .post,
+      formData: formData,
+      headers: headers,
+      fileOptions: fileOptions
+    )
   }
 
   /// Replaces an existing file at the specified path with a new one.
   /// - Parameters:
-  ///   - path: The relative file path. Should be of the format `folder/subfolder`. The bucket already exist before attempting to upload.
+  ///   - path: The relative file path. Should be of the format `folder/subfolder`. The bucket
+  /// already exist before attempting to upload.
   ///   - file: The file object to be stored in the bucket.
   ///   - fileOptions: HTTP headers. For example `cacheControl`
-  ///   - completion: Result<Any, Error>
-  public func update(
-    path: String, file: File, fileOptions: FileOptions?,
-    completion: @escaping (Result<Any, Error>) -> Void
-  ) {
+  public func update(path: String, file: File, fileOptions: FileOptions?) async throws -> Any {
     guard let url = URL(string: "\(url)/object/\(bucketId)/\(path)") else {
-      completion(.failure(StorageError(message: "badURL")))
-      return
+      throw StorageError(message: "badURL")
     }
 
     let formData = FormData()
     formData.append(file: file)
 
-    fetch(url: url, method: .put, formData: formData, headers: headers, fileOptions: fileOptions) {
-      result in
-      completion(result)
-    }
+    return try await fetch(
+      url: url,
+      method: .put,
+      formData: formData,
+      headers: headers,
+      fileOptions: fileOptions
+    )
   }
 
   /// Moves an existing file, optionally renaming it at the same time.
   /// - Parameters:
-  ///   - fromPath: The original file path, including the current file name. For example `folder/image.png`.
-  ///   - toPath: The new file path, including the new file name. For example `folder/image-copy.png`.
-  ///   - completion: Result<[String: Any], Error>
-  public func move(
-    fromPath: String, toPath: String, completion: @escaping (Result<[String: Any], Error>) -> Void
-  ) {
+  ///   - fromPath: The original file path, including the current file name. For example
+  /// `folder/image.png`.
+  ///   - toPath: The new file path, including the new file name. For example
+  /// `folder/image-copy.png`.
+  public func move(fromPath: String, toPath: String) async throws -> [String: Any] {
     guard let url = URL(string: "\(url)/object/move") else {
-      completion(.failure(StorageError(message: "badURL")))
-      return
+      throw StorageError(message: "badURL")
     }
 
-    fetch(
+    let response = try await fetch(
       url: url, method: .post,
       parameters: ["bucketId": bucketId, "sourceKey": fromPath, "destinationKey": toPath],
       headers: headers
-    ) { result in
-      switch result {
-      case let .success(response):
-        guard let dict: [String: Any] = response as? [String: Any] else {
-          completion(.failure(StorageError(message: "failed to parse response")))
-          return
-        }
-        completion(.success(dict))
-      case let .failure(error):
-        completion(.failure(error))
-      }
+    )
+
+    guard let dict = response as? [String: Any] else {
+      throw StorageError(message: "failed to parse response")
     }
+
+    return dict
   }
 
-  /// Create signed url to download file without requiring permissions. This URL can be valid for a set number of seconds.
+  /// Create signed url to download file without requiring permissions. This URL can be valid for a
+  /// set number of seconds.
   /// - Parameters:
-  ///   - path: The file path to be downloaded, including the current file name. For example `folder/image.png`.
-  ///   - expiresIn: The number of seconds until the signed URL expires. For example, `60` for a URL which is valid for one minute.
-  ///   - completion: Result<URL, Error>
-  public func createSignedUrl(
-    path: String, expiresIn: Int, completion: @escaping (Result<URL, Error>) -> Void
-  ) {
+  ///   - path: The file path to be downloaded, including the current file name. For example
+  /// `folder/image.png`.
+  ///   - expiresIn: The number of seconds until the signed URL expires. For example, `60` for a URL
+  /// which is valid for one minute.
+  public func createSignedURL(path: String, expiresIn: Int) async throws -> URL {
     guard let url = URL(string: "\(url)/object/sign/\(path)") else {
-      completion(.failure(StorageError(message: "badURL")))
-      return
+      throw StorageError(message: "badURL")
     }
 
-    fetch(url: url, method: .post, parameters: ["expiresIn": expiresIn], headers: headers) {
-      result in
-      switch result {
-      case let .success(response):
-        guard let dict: [String: Any] = response as? [String: Any],
-          let signedURL: String = dict["signedURL"] as? String
-        else {
-          completion(.failure(StorageError(message: "failed to parse response")))
-          return
-        }
-        completion(.success(url.appendingPathComponent(signedURL)))
-      case let .failure(error):
-        completion(.failure(error))
-      }
+    let response = try await fetch(
+      url: url,
+      method: .post,
+      parameters: ["expiresIn": expiresIn],
+      headers: headers
+    )
+    guard
+      let dict = response as? [String: Any],
+      let signedURL: String = dict["signedURL"] as? String
+    else {
+      throw StorageError(message: "failed to parse response")
     }
+    return url.appendingPathComponent(signedURL)
   }
 
   /// Deletes files within the same bucket
   /// - Parameters:
-  ///   - paths: An array of files to be deletes, including the path and file name. For example [`folder/image.png`].
-  ///   - completion: Result<[String: Any], Error>
-  public func remove(paths: [String], completion: @escaping (Result<[String: Any], Error>) -> Void)
-  {
+  ///   - paths: An array of files to be deletes, including the path and file name. For example
+  /// [`folder/image.png`].
+  public func remove(paths: [String]) async throws -> [String: Any] {
     guard let url = URL(string: "\(url)/object/\(bucketId)") else {
-      completion(.failure(StorageError(message: "badURL")))
-      return
+      throw StorageError(message: "badURL")
     }
 
-    fetch(url: url, method: .delete, parameters: ["prefixes": paths], headers: headers) { result in
-      switch result {
-      case let .success(response):
-        guard let dict: [String: Any] = response as? [String: Any] else {
-          completion(.failure(StorageError(message: "failed to parse response")))
-          return
-        }
-        completion(.success(dict))
-      case let .failure(error):
-        completion(.failure(error))
-      }
+    let response = try await fetch(
+      url: url,
+      method: .delete,
+      parameters: ["prefixes": paths],
+      headers: headers
+    )
+    guard let dict = response as? [String: Any] else {
+      throw StorageError(message: "failed to parse response")
     }
+
+    return dict
   }
 
   /// Lists all the files within a bucket.
   /// - Parameters:
   ///   - path: The folder path.
   ///   - options: Search options, including `limit`, `offset`, and `sortBy`.
-  ///   - completion: Result<[FileObject], Error>
   public func list(
-    path: String? = nil, options: SearchOptions? = nil,
-    completion: @escaping (Result<[FileObject], Error>) -> Void
-  ) {
+    path: String? = nil,
+    options: SearchOptions? = nil
+  ) async throws -> [FileObject] {
     guard let url = URL(string: "\(url)/object/list/\(bucketId)") else {
-      completion(.failure(StorageError(message: "badURL")))
-      return
+      throw StorageError(message: "badURL")
     }
 
     var sortBy: [String: String] = [:]
     sortBy["column"] = options?.sortBy?.column ?? "name"
     sortBy["order"] = options?.sortBy?.order ?? "asc"
 
-    fetch(
+    let response = try await fetch(
       url: url, method: .post,
       parameters: [
         "prefix": path ?? "", "limit": options?.limit ?? 100, "offset": options?.offset ?? 0,
       ], headers: headers
-    ) { result in
-      switch result {
-      case let .success(response):
-        guard let arr: [[String: Any]] = response as? [[String: Any]] else {
-          completion(.failure(StorageError(message: "failed to parse response")))
-          return
-        }
-        completion(.success(arr.compactMap { FileObject(from: $0) }))
-      case let .failure(error):
-        completion(.failure(error))
-      }
+    )
+
+    guard let array = response as? [[String: Any]] else {
+      throw StorageError(message: "failed to parse response")
     }
+
+    return array.compactMap { FileObject(from: $0) }
   }
 
   /// Downloads a file.
   /// - Parameters:
-  ///   - path: The file path to be downloaded, including the path and file name. For example `folder/image.png`.
-  ///   - completion: Result<Data?, Error>) -> Void
-  /// - Returns: URLSessionDataTask or nil
+  ///   - path: The file path to be downloaded, including the path and file name. For example
+  /// `folder/image.png`.
   @discardableResult
-  public func download(path: String, completion: @escaping (Result<Data?, Error>) -> Void)
-    -> URLSessionDataTask?
-  {
+  public func download(path: String) async throws -> Data {
     guard let url = URL(string: "\(url)/object/\(bucketId)/\(path)") else {
-      completion(.failure(StorageError(message: "badURL")))
-      return nil
+      throw StorageError(message: "badURL")
     }
 
-    let dataTask = fetch(url: url, parameters: nil) { result in
-      switch result {
-      case let .success(data):
-        guard let data: Data = data as? Data else {
-          completion(.failure(StorageError(message: "failed to parse response")))
-          return
-        }
-        completion(.success(data))
-      case let .failure(error):
-        completion(.failure(error))
-      }
+    let response = try await fetch(url: url, parameters: nil)
+    guard let data = response as? Data else {
+      throw StorageError(message: "failed to parse response")
     }
-    return dataTask
+    return data
   }
 }

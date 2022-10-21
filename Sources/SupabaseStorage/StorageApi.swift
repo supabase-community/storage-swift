@@ -7,10 +7,12 @@ import Foundation
 public class StorageApi {
   var url: String
   var headers: [String: String]
+  var http: StorageHTTPClient
 
-  init(url: String, headers: [String: String]) {
+  init(url: String, headers: [String: String], http: StorageHTTPClient) {
     self.url = url
     self.headers = headers
+    self.http = http
     //        self.headers.merge(["Content-Type": "application/json"]) { $1 }
   }
 
@@ -28,10 +30,11 @@ public class StorageApi {
 
   @discardableResult
   internal func fetch(
-    url: URL, method: HTTPMethod = .get, parameters: [String: Any]?,
-    headers: [String: String]? = nil, jsonSerialization _: Bool = true,
-    completion: @escaping (Result<Any, Error>) -> Void
-  ) -> URLSessionDataTask? {
+    url: URL,
+    method: HTTPMethod = .get,
+    parameters: [String: Any]?,
+    headers: [String: String]? = nil
+  ) async throws -> Any {
     var request = URLRequest(url: url)
     request.httpMethod = method.rawValue
 
@@ -43,53 +46,31 @@ public class StorageApi {
     }
 
     if let parameters = parameters {
-      do {
-        request.httpBody = try JSONSerialization.data(withJSONObject: parameters, options: [])
-      } catch {
-        completion(.failure(error))
-        return nil
-      }
+      request.httpBody = try JSONSerialization.data(withJSONObject: parameters, options: [])
     }
 
-    let session = URLSession.shared
-    let dataTask: URLSessionDataTask = session.dataTask(
-      with: request,
-      completionHandler: { (data, response, error) -> Void in
-        if let error = error {
-          completion(.failure(error))
-          return
-        }
-
-        if let resp = response as? HTTPURLResponse {
-          if let data = data, let mimeType = response?.mimeType {
-            do {
-              switch mimeType {
-              case "application/json":
-                let json = try JSONSerialization.jsonObject(with: data, options: [])
-                completion(.success(try self.parse(response: json, statusCode: resp.statusCode)))
-              default:
-                completion(.success(try self.parse(response: data, statusCode: resp.statusCode)))
-              }
-            } catch {
-              completion(.failure(error))
-              return
-            }
-          }
-        } else {
-          completion(.failure(StorageError(message: "failed to get response")))
-        }
-
-      })
-
-    dataTask.resume()
-    return dataTask
+    let (data, response) = try await http.fetch(request)
+    if let mimeType = response.mimeType {
+      switch mimeType {
+      case "application/json":
+        let json = try JSONSerialization.jsonObject(with: data, options: [])
+        return try parse(response: json, statusCode: response.statusCode)
+      default:
+        return try parse(response: data, statusCode: response.statusCode)
+      }
+    } else {
+      throw StorageError(message: "failed to get response")
+    }
   }
 
   internal func fetch(
-    url: URL, method: HTTPMethod = .post, formData: FormData, headers: [String: String]? = nil,
-    fileOptions: FileOptions? = nil, jsonSerialization: Bool = true,
-    completion: @escaping (Result<Any, Error>) -> Void
-  ) {
+    url: URL,
+    method: HTTPMethod = .post,
+    formData: FormData,
+    headers: [String: String]? = nil,
+    fileOptions: FileOptions? = nil,
+    jsonSerialization: Bool = true
+  ) async throws -> Any {
     var request = URLRequest(url: url)
     request.httpMethod = method.rawValue
 
@@ -108,43 +89,22 @@ public class StorageApi {
 
     request.setValue(formData.contentType, forHTTPHeaderField: "Content-Type")
 
-    let session = URLSession.shared
-    let dataTask = session.uploadTask(
-      with: request, from: formData.data,
-      completionHandler: { (data, response, error) -> Void in
-        if let error = error {
-          completion(.failure(error))
-          return
-        }
+    let (data, response) = try await http.upload(request, from: formData.data)
 
-        if let resp = response as? HTTPURLResponse {
-          if let data = data {
-            if jsonSerialization {
-              do {
-                let json = try JSONSerialization.jsonObject(with: data, options: [])
-                completion(.success(try self.parse(response: json, statusCode: resp.statusCode)))
-              } catch {
-                completion(.failure(error))
-                return
-              }
-            } else {
-              if let dataString = String(data: data, encoding: .utf8) {
-                completion(.success(dataString))
-                return
-              }
-            }
-          }
-        } else {
-          completion(.failure(StorageError(message: "failed to get response")))
-        }
+    if jsonSerialization {
+      let json = try JSONSerialization.jsonObject(with: data, options: [])
+      return try parse(response: json, statusCode: response.statusCode)
+    }
 
-      })
+    if let dataString = String(data: data, encoding: .utf8) {
+      return dataString
+    }
 
-    dataTask.resume()
+    throw StorageError(message: "failed to get response")
   }
 
   private func parse(response: Any, statusCode: Int) throws -> Any {
-    if statusCode == 200 || 200..<300 ~= statusCode {
+    if statusCode == 200 || 200 ..< 300 ~= statusCode {
       return response
     } else if let dict = response as? [String: Any], let error = dict["error"] as? String {
       throw StorageError(statusCode: statusCode, message: error)
