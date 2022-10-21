@@ -10,7 +10,8 @@ public struct FileObject {
   public var buckets: Bucket?
 
   public init?(from dictionary: [String: Any]) {
-    guard let name: String = dictionary["name"] as? String,
+    guard
+      let name: String = dictionary["name"] as? String,
       let bucket_id: String = dictionary["bucket_id"] as? String,
       let owner: String = dictionary["owner"] as? String,
       let id: String = dictionary["id"] as? String,

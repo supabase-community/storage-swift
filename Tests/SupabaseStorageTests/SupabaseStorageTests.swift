@@ -27,98 +27,31 @@ final class SupabaseStorageTests: XCTestCase {
     }
   }
 
-  func testCreateBucket() {
-    let e = expectation(description: "testCreateBucket")
-
-    storage.createBucket(id: bucket) { result in
-      switch result {
-      case let .success(buckets):
-        print(buckets)
-        XCTAssertEqual(buckets.count >= 0, true)
-      case let .failure(error):
-        print(error.localizedDescription)
-        XCTFail("testCreateBucket failed: \(error.localizedDescription)")
-      }
-      e.fulfill()
-    }
-
-    waitForExpectations(timeout: 30) { error in
-      if let error = error {
-        XCTFail("testCreateBucket failed: \(error.localizedDescription)")
-      }
-    }
+  func testCreateBucket() async throws {
+    let buckets = try await storage.createBucket(id: bucket)
+    XCTAssertFalse(buckets.isEmpty)
   }
 
-  func testListBuckets() {
-    let e = expectation(description: "listBuckets")
-
-    storage.listBuckets { result in
-      switch result {
-      case let .success(buckets):
-        print(buckets)
-        XCTAssertEqual(buckets.count >= 0, true)
-      case let .failure(error):
-        print(error.localizedDescription)
-        XCTFail("listBuckets failed: \(error.localizedDescription)")
-      }
-      e.fulfill()
-    }
-
-    waitForExpectations(timeout: 30) { error in
-      if let error = error {
-        XCTFail("listBuckets failed: \(error.localizedDescription)")
-      }
-    }
+  func testListBuckets() async throws {
+    let buckets = try await storage.listBuckets()
+    XCTAssertFalse(buckets.isEmpty)
   }
 
-  func testUploadFile() {
-    let e = expectation(description: "testUploadFile")
+  func testUploadFile() async throws {
     let data = try! Data(
       contentsOf: URL(
-        string: "https://raw.githubusercontent.com/satishbabariya/storage-swift/main/README.md")!)
+        string: "https://raw.githubusercontent.com/satishbabariya/storage-swift/main/README.md"
+      )!
+    )
 
     let file = File(name: "README.md", data: data, fileName: "README.md", contentType: "text/html")
-
-    storage.from(id: bucket).upload(
+    _ = try await storage.from(id: bucket).upload(
       path: "README.md", file: file, fileOptions: FileOptions(cacheControl: "3600")
-    ) { result in
-      switch result {
-      case let .success(res):
-        print(res)
-        XCTAssertEqual(true, true)
-      case let .failure(error):
-        print(error.localizedDescription)
-        XCTFail("testUploadFile failed: \(error.localizedDescription)")
-      }
-      e.fulfill()
-    }
-
-    waitForExpectations(timeout: 30) { error in
-      if let error = error {
-        XCTFail("testUploadFile failed: \(error.localizedDescription)")
-      }
-    }
+    )
   }
 
-  func testDownloadFile() {
-    let e = expectation(description: "testDownloadFile")
-
-    storage.from(id: bucket).download(path: "README.md") { result in
-      switch result {
-      case let .success(url):
-        print(url as Any)
-        XCTAssertNotNil(url)
-      case let .failure(error):
-        print(error.localizedDescription)
-        XCTFail("testDownloadFile failed: \(error.localizedDescription)")
-      }
-      e.fulfill()
-    }
-
-    waitForExpectations(timeout: 30) { error in
-      if let error = error {
-        XCTFail("testDownloadFile failed: \(error.localizedDescription)")
-      }
-    }
+  func testDownloadFile() async throws {
+    let data = try await storage.from(id: bucket).download(path: "README.md")
+    XCTAssertFalse(data.isEmpty)
   }
 }

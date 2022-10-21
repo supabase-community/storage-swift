@@ -7,7 +7,8 @@ public struct Bucket {
   public var updatedAt: String
 
   init?(from dictionary: [String: Any]) {
-    guard let id: String = dictionary["id"] as? String,
+    guard
+      let id: String = dictionary["id"] as? String,
       let name: String = dictionary["name"] as? String,
       let owner: String = dictionary["owner"] as? String,
       let createdAt: String = dictionary["created_at"] as? String,
