@@ -8,12 +8,12 @@ public struct Bucket {
 
   init?(from dictionary: [String: Any]) {
     guard
-      let id: String = dictionary["id"] as? String,
-      let name: String = dictionary["name"] as? String,
-      let owner: String = dictionary["owner"] as? String,
-      let createdAt: String = dictionary["created_at"] as? String,
-      let updatedAt: String = dictionary["updated_at"] as? String,
-      let isPublic: Bool = dictionary["public"] as? Bool
+      let id = dictionary["id"] as? String,
+      let name = dictionary["name"] as? String,
+      let owner = dictionary["owner"] as? String,
+      let createdAt = dictionary["created_at"] as? String,
+      let updatedAt = dictionary["updated_at"] as? String,
+      let isPublic = dictionary["public"] as? Bool
     else {
       return nil
     }

@@ -11,16 +11,15 @@ public struct FileObject {
 
   public init?(from dictionary: [String: Any]) {
     guard
-      let name: String = dictionary["name"] as? String,
-      let bucket_id: String = dictionary["bucket_id"] as? String,
-      let owner: String = dictionary["owner"] as? String,
-      let id: String = dictionary["id"] as? String,
-      let updated_at: String = dictionary["updated_at"] as? String,
-      let created_at: String = dictionary["created_at"] as? String,
-      let last_accessed_at: String = dictionary["last_accessed_at"] as? String,
-      let metadata: [String: Any] = dictionary["metadata"] as? [String: Any],
-      let buckets: [String: Any] = dictionary["buckets"] as? [String: Any]
-
+      let name = dictionary["name"] as? String,
+      let bucket_id = dictionary["bucket_id"] as? String,
+      let owner = dictionary["owner"] as? String,
+      let id = dictionary["id"] as? String,
+      let updated_at = dictionary["updated_at"] as? String,
+      let created_at = dictionary["created_at"] as? String,
+      let last_accessed_at = dictionary["last_accessed_at"] as? String,
+      let metadata = dictionary["metadata"] as? [String: Any],
+      let buckets = dictionary["buckets"] as? [String: Any]
     else {
       return nil
     }
