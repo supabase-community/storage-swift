@@ -5,8 +5,10 @@ public protocol StorageHTTPClient {
   func upload(_ request: URLRequest, from data: Data) async throws -> (Data, HTTPURLResponse)
 }
 
-struct DefaultStorageHTTPClient: StorageHTTPClient {
-  func fetch(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+public struct DefaultStorageHTTPClient: StorageHTTPClient {
+  public init() {}
+
+  public func fetch(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
     try await withCheckedThrowingContinuation { continuation in
       let dataTask = URLSession.shared.dataTask(with: request) { data, response, error in
         if let error = error {
@@ -29,7 +31,7 @@ struct DefaultStorageHTTPClient: StorageHTTPClient {
     }
   }
 
-  func upload(_ request: URLRequest, from data: Data) async throws -> (Data, HTTPURLResponse) {
+  public func upload(_ request: URLRequest, from data: Data) async throws -> (Data, HTTPURLResponse) {
     try await withCheckedThrowingContinuation { continuation in
       let task = URLSession.shared.uploadTask(with: request, from: data) { data, response, error in
         if let error = error {
