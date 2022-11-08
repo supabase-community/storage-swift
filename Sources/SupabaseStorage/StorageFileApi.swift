@@ -18,6 +18,17 @@ public class StorageFileApi: StorageApi {
     self.bucketId = bucketId
     super.init(url: url, headers: headers, http: http)
   }
+    
+    /// StorageFileApi initializer
+    /// - Parameters:
+    ///   - url: Storage HTTP URL
+    ///   - headers: HTTP headers.
+    ///   - bucketId: The bucket id to operate on.
+    init(url: URL, headers: [String: String], bucketId: String, http: StorageHTTPClient) {
+        self.bucketId = bucketId
+        super.init(url: url, headers: headers, http: http)
+    }
+    
 
   /// StorageFileApi initializer
   /// - Parameters:
