@@ -20,168 +20,225 @@ public class StorageFileApi: StorageApi {
   }
 
   /// Uploads a file to an existing bucket.
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: none
+  /// > - `objects` table permissions: `insert`
+  ///
   /// - Parameters:
-  ///   - path: The relative file path. Should be of the format `folder/subfolder/filename.png`. The
-  /// bucket must already exist before attempting to upload.
+  ///   - path: The relative file path. Should be of the format `folder/subfolder/filename.png`.
   ///   - file: The File object to be stored in the bucket.
   ///   - fileOptions: HTTP headers. For example `cacheControl`
-  public func upload(path: String, file: File, fileOptions: FileOptions?) async throws -> Any {
-    guard let url = URL(string: "\(url)/object/\(bucketId)/\(path)") else {
-      throw StorageError(message: "badURL")
-    }
+  /// - Returns: Key of the file `bucketID/path`
+  @discardableResult
+  public func upload(path: String, file: File, fileOptions: FileOptions?) async throws -> String {
+    let url = newUrl.appendingPathComponent("/object/\(bucketId)/\(path)")
 
     let formData = FormData()
     formData.append(file: file)
 
-    return try await fetch(
+    let responseData = try await fetch(
       url: url,
       method: .post,
       formData: formData,
       headers: headers,
       fileOptions: fileOptions
     )
+
+    let responseObject = try decoder.decode(OneKeyedResponse<String>.self, from: responseData)
+
+    if responseObject.key != "Key" {
+      throw StorageError(message: "failed to parse response - missing 'Key'")
+    }
+
+    return responseObject.value
   }
 
   /// Replaces an existing file at the specified path with a new one.
+  ///
+  /// > The bucket must already exist before attempting to upload.
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: none
+  /// > - `objects` table permissions: `update` and `select`
+  ///
   /// - Parameters:
-  ///   - path: The relative file path. Should be of the format `folder/subfolder`. The bucket
-  /// already exist before attempting to upload.
+  ///   - path: The relative file path. Should be of the format `folder/subfolder`.
   ///   - file: The file object to be stored in the bucket.
   ///   - fileOptions: HTTP headers. For example `cacheControl`
-  public func update(path: String, file: File, fileOptions: FileOptions?) async throws -> Any {
-    guard let url = URL(string: "\(url)/object/\(bucketId)/\(path)") else {
-      throw StorageError(message: "badURL")
-    }
+  /// - Returns: Key of the file `bucketID/path`
+  @discardableResult
+  public func update(path: String, file: File, fileOptions: FileOptions?) async throws -> String {
+    let url = newUrl.appendingPathComponent("/object/\(bucketId)/\(path)")
 
     let formData = FormData()
     formData.append(file: file)
 
-    return try await fetch(
+    let responseData = try await fetch(
       url: url,
       method: .put,
       formData: formData,
       headers: headers,
       fileOptions: fileOptions
     )
+
+    let responseObject = try decoder.decode(OneKeyedResponse<String>.self, from: responseData)
+
+    if responseObject.key != "Key" {
+      throw StorageError(message: "failed to parse response - missing 'Key'")
+    }
+
+    return responseObject.value
   }
 
   /// Moves an existing file, optionally renaming it at the same time.
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: none
+  /// > - `objects` table permissions: `update` and `select`
+  ///
   /// - Parameters:
   ///   - fromPath: The original file path, including the current file name. For example
   /// `folder/image.png`.
   ///   - toPath: The new file path, including the new file name. For example
   /// `folder/image-copy.png`.
-  public func move(fromPath: String, toPath: String) async throws -> [String: Any] {
-    guard let url = URL(string: "\(url)/object/move") else {
-      throw StorageError(message: "badURL")
-    }
+  public func move(fromPath: String, toPath: String) async throws {
+    let url = newUrl.appendingPathComponent("/object/move")
 
-    let response = try await fetch(
-      url: url, method: .post,
-      parameters: ["bucketId": bucketId, "sourceKey": fromPath, "destinationKey": toPath],
+    let body = MoveFileRequest(
+      bucketID: bucketId,
+      source: fromPath,
+      destination: toPath
+    )
+
+    let responseData = try await fetch(
+      url: url,
+      method: .post,
+      json: body,
       headers: headers
     )
 
-    guard let dict = response as? [String: Any] else {
+    let responseObject = try decoder.decode(OneKeyedResponse<String>.self, from: responseData)
+
+    if responseObject.key != "message",
+       responseObject.value == "Successfully moved"
+    {
       throw StorageError(message: "failed to parse response")
     }
-
-    return dict
   }
 
-  /// Create signed url to download file without requiring permissions. This URL can be valid for a
-  /// set number of seconds.
+  /// Create signed url to download file without requiring permissions.
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: none
+  /// > - `objects` table permissions: `select`
+  ///
+  /// This URL can be valid for a set number of seconds.
   /// - Parameters:
-  ///   - path: The file path to be downloaded, including the current file name. For example
-  /// `folder/image.png`.
+  ///   - path: The file path to be downloaded, including the current file name. For example `folder/image.png`.
   ///   - expiresIn: The number of seconds until the signed URL expires. For example, `60` for a URL
   /// which is valid for one minute.
   public func createSignedURL(path: String, expiresIn: Int) async throws -> URL {
-    guard let url = URL(string: "\(url)/object/sign/\(path)") else {
-      throw StorageError(message: "badURL")
-    }
+    let url = newUrl.appendingPathComponent("/object/sign/\(bucketId)/\(path)")
 
-    let response = try await fetch(
+    let responseData = try await fetch(
       url: url,
       method: .post,
-      parameters: ["expiresIn": expiresIn],
+      json: [
+        "expiresIn": expiresIn,
+      ],
       headers: headers
     )
-    guard
-      let dict = response as? [String: Any],
-      let signedURL: String = dict["signedURL"] as? String
-    else {
+
+    let responseObject = try decoder.decode(OneKeyedResponse<String>.self, from: responseData)
+
+    guard responseObject.key == "signedURL" else {
       throw StorageError(message: "failed to parse response")
     }
-    return url.appendingPathComponent(signedURL)
+
+    guard let url = URL(string: newUrl.absoluteString + responseObject.value) else {
+      throw StorageError(message: "failed to construct signed url with '\(responseObject.value)'")
+    }
+
+    return url
   }
 
   /// Deletes files within the same bucket
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: none
+  /// > - `objects` table permissions: `delete` and `select`
+  ///
   /// - Parameters:
   ///   - paths: An array of files to be deletes, including the path and file name. For example
   /// [`folder/image.png`].
-  public func remove(paths: [String]) async throws -> [String: Any] {
-    guard let url = URL(string: "\(url)/object/\(bucketId)") else {
-      throw StorageError(message: "badURL")
-    }
+  public func remove(paths: [String]) async throws -> [FileObject] {
+    let url = newUrl.appendingPathComponent("/object/\(bucketId)")
 
-    let response = try await fetch(
+    let responseData = try await fetch(
       url: url,
       method: .delete,
-      parameters: ["prefixes": paths],
+      json: [
+        "prefixes": paths,
+      ],
       headers: headers
     )
-    guard let dict = response as? [String: Any] else {
-      throw StorageError(message: "failed to parse response")
-    }
 
-    return dict
+    let responseObject = try decoder.decode([FileObject].self, from: responseData)
+
+    return responseObject
   }
 
   /// Lists all the files within a bucket.
+  ///
+  /// > The bucket must already exist before attempting to upload.
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: none
+  /// > - `objects` table permissions: `select`
+  ///
   /// - Parameters:
   ///   - path: The folder path.
-  ///   - options: Search options, including `limit`, `offset`, and `sortBy`.
+  ///   - options: Search options, including `limit`, `offset`, and `sortBy`
   public func list(
     path: String? = nil,
     options: SearchOptions? = nil
   ) async throws -> [FileObject] {
-    guard let url = URL(string: "\(url)/object/list/\(bucketId)") else {
-      throw StorageError(message: "badURL")
-    }
+    let url = newUrl.appendingPathComponent("/object/list/\(bucketId)")
 
-    var sortBy: [String: String] = [:]
-    sortBy["column"] = options?.sortBy?.column ?? "name"
-    sortBy["order"] = options?.sortBy?.order ?? "asc"
-
-    let response = try await fetch(
-      url: url, method: .post,
-      parameters: [
-        "prefix": path ?? "", "limit": options?.limit ?? 100, "offset": options?.offset ?? 0,
-      ], headers: headers
+    let body = FileListRequest(
+      path: path,
+      options: options
     )
 
-    guard let array = response as? [[String: Any]] else {
-      throw StorageError(message: "failed to parse response")
-    }
+    let responseData = try await fetch(
+      url: url, method: .post,
+      json: body,
+      headers: headers
+    )
 
-    return array.compactMap { FileObject(from: $0) }
+    let responseObject = try decoder.decode([FileObject].self, from: responseData)
+
+    return responseObject
   }
 
   /// Downloads a file.
+  ///
+  /// > The bucket must already exist before attempting to upload.
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: none
+  /// > - `objects` table permissions: `select`
+  ///
   /// - Parameters:
-  ///   - path: The file path to be downloaded, including the path and file name. For example
-  /// `folder/image.png`.
+  ///   - path: The file path to be downloaded, including the path and file name.
+  ///     For example `folder/image.png`.
   @discardableResult
   public func download(path: String) async throws -> Data {
-    guard let url = URL(string: "\(url)/object/\(bucketId)/\(path)") else {
-      throw StorageError(message: "badURL")
-    }
+    let url = newUrl.appendingPathComponent("/object/\(bucketId)/\(path)")
 
-    let response = try await fetch(url: url, parameters: nil)
-    guard let data = response as? Data else {
-      throw StorageError(message: "failed to parse response")
-    }
-    return data
+    let responseData = try await fetch(url: url, json: nil)
+
+    return responseData
   }
 }

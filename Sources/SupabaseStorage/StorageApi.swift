@@ -5,12 +5,28 @@ import Foundation
 #endif
 
 public class StorageApi {
-  var url: String
+  let decoder: JSONDecoder = {
+    var decoder = JSONDecoder()
+    return decoder
+  }()
+
+  let encoder: JSONEncoder = .init()
+
+  var url: String { newUrl.absoluteString }
+  var newUrl: URL
+
   var headers: [String: String]
   var http: StorageHTTPClient
 
+  init(url: URL, headers: [String: String], http: StorageHTTPClient) {
+    newUrl = url
+    self.headers = headers
+    self.http = http
+    //        self.headers.merge(["Content-Type": "application/json"]) { $1 }
+  }
+
   init(url: String, headers: [String: String], http: StorageHTTPClient) {
-    self.url = url
+    newUrl = URL(string: url)!
     self.headers = headers
     self.http = http
     //        self.headers.merge(["Content-Type": "application/json"]) { $1 }
@@ -28,13 +44,26 @@ public class StorageApi {
     case patch = "PATCH"
   }
 
+  internal func parseForErrors(data: Data, response: HTTPURLResponse) throws {
+    if 200 ..< 300 ~= response.statusCode {
+      return
+    }
+
+    do {
+      let storageError = try decoder.decode(StorageError.self, from: data)
+      throw storageError
+    } catch {
+      throw error
+    }
+  }
+
   @discardableResult
   internal func fetch(
     url: URL,
     method: HTTPMethod = .get,
-    parameters: [String: Any]?,
+    json: (any Encodable)? = nil,
     headers: [String: String]? = nil
-  ) async throws -> Any {
+  ) async throws -> Data {
     var request = URLRequest(url: url)
     request.httpMethod = method.rawValue
 
@@ -45,22 +74,17 @@ public class StorageApi {
       request.allHTTPHeaderFields = self.headers
     }
 
-    if let parameters = parameters {
-      request.httpBody = try JSONSerialization.data(withJSONObject: parameters, options: [])
+    if let jsonBody = json {
+      request.allHTTPHeaderFields?["Content-Type"] = "application/json"
+      let bodyData = try encoder.encode(jsonBody)
+      request.httpBody = bodyData
     }
 
-    let (data, response) = try await http.fetch(request)
-    if let mimeType = response.mimeType {
-      switch mimeType {
-      case "application/json":
-        let json = try JSONSerialization.jsonObject(with: data, options: [])
-        return try parse(response: json, statusCode: response.statusCode)
-      default:
-        return try parse(response: data, statusCode: response.statusCode)
-      }
-    } else {
-      throw StorageError(message: "failed to get response")
-    }
+    let (data, response) = try! await http.fetch(request)
+
+    try parseForErrors(data: data, response: response)
+
+    return data
   }
 
   internal func fetch(
@@ -68,9 +92,8 @@ public class StorageApi {
     method: HTTPMethod = .post,
     formData: FormData,
     headers: [String: String]? = nil,
-    fileOptions: FileOptions? = nil,
-    jsonSerialization: Bool = true
-  ) async throws -> Any {
+    fileOptions: FileOptions? = nil
+  ) async throws -> Data {
     var request = URLRequest(url: url)
     request.httpMethod = method.rawValue
 
@@ -91,27 +114,8 @@ public class StorageApi {
 
     let (data, response) = try await http.upload(request, from: formData.data)
 
-    if jsonSerialization {
-      let json = try JSONSerialization.jsonObject(with: data, options: [])
-      return try parse(response: json, statusCode: response.statusCode)
-    }
+    try parseForErrors(data: data, response: response)
 
-    if let dataString = String(data: data, encoding: .utf8) {
-      return dataString
-    }
-
-    throw StorageError(message: "failed to get response")
-  }
-
-  private func parse(response: Any, statusCode: Int) throws -> Any {
-    if statusCode == 200 || 200 ..< 300 ~= statusCode {
-      return response
-    } else if let dict = response as? [String: Any], let error = dict["error"] as? String {
-      throw StorageError(statusCode: statusCode, message: error)
-    } else if let dict = response as? [String: Any], let message = dict["message"] as? String {
-      throw StorageError(statusCode: statusCode, message: message)
-    } else {
-      throw StorageError(statusCode: statusCode, message: "something went wrong")
-    }
+    return data
   }
 }

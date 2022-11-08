@@ -10,93 +10,167 @@ public class StorageBucketApi: StorageApi {
   /// - Parameters:
   ///   - url: Storage HTTP URL
   ///   - headers: HTTP headers.
-  override init(url: String, headers: [String: String], http: StorageHTTPClient) {
+  override init(url: URL, headers: [String: String], http: StorageHTTPClient) {
     super.init(url: url, headers: headers, http: http)
-    self.headers.merge(["Content-Type": "application/json"]) { $1 }
   }
 
   /// Retrieves the details of all Storage buckets within an existing product.
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: `select`
+  /// > - `objects` table permissions: none
+  ///
   public func listBuckets() async throws -> [Bucket] {
-    guard let url = URL(string: "\(url)/bucket") else {
-      throw StorageError(message: "badURL")
-    }
+    let url = newUrl.appendingPathComponent("bucket")
 
-    let response = try await fetch(url: url, method: .get, parameters: nil, headers: headers)
-    guard let dict = response as? [[String: Any]] else {
-      throw StorageError(message: "failed to parse response")
-    }
+    let responseData = try await fetch(
+      url: url,
+      method: .get,
+      json: nil,
+      headers: headers
+    )
 
-    return dict.compactMap { Bucket(from: $0) }
+    let responseObject = try decoder.decode([Bucket].self, from: responseData)
+
+    return responseObject
   }
 
   /// Retrieves the details of an existing Storage bucket.
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: `select`
+  /// > - `objects` table permissions: none
+  ///
   /// - Parameters:
   ///   - id: The unique identifier of the bucket you would like to retrieve.
   public func getBucket(id: String) async throws -> Bucket {
-    guard let url = URL(string: "\(url)/bucket/\(id)") else {
-      throw StorageError(message: "badURL")
-    }
+    let url = newUrl.appendingPathComponent("/bucket/\(id)")
 
-    let response = try await fetch(url: url, method: .get, parameters: nil, headers: headers)
-    guard
-      let dict = response as? [String: Any],
-      let bucket = Bucket(from: dict)
-    else {
-      throw StorageError(message: "failed to parse response")
-    }
+    let responseData = try await fetch(
+      url: url,
+      method: .get,
+      json: nil,
+      headers: headers
+    )
 
-    return bucket
+    let responseObject = try decoder.decode(Bucket.self, from: responseData)
+    return responseObject
   }
 
   /// Creates a new Storage bucket
+  ///
+  /// > Public buckets don't require an authorization token to download objects, but still require a valid token for all other operations. By default, buckets are private.
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: `insert`
+  /// > - `objects` table permissions: none
+  ///
   /// - Parameters:
-  ///   - id: A unique identifier for the bucket you are creating.
-  ///   - completion: newly created bucket id
-  public func createBucket(id: String) async throws -> [String: Any] {
-    guard let url = URL(string: "\(url)/bucket") else {
-      throw StorageError(message: "badURL")
-    }
+  ///   - isPublic: The visibility of the bucket.
+  /// - Returns: newly created bucket ID
+  public func createBucket(id: String, isPublic: Bool = false) async throws -> String {
+    let url = newUrl.appendingPathComponent("/bucket")
 
-    let response = try await fetch(
+    let body = Bucket.CreateRequest(id: id, isPublic: isPublic)
+
+    let responseData = try await fetch(
       url: url,
       method: .post,
-      parameters: ["id": id, "name": id],
+      json: body,
       headers: headers
     )
-    guard let dict = response as? [String: Any] else {
-      throw StorageError(message: "failed to parse response")
+
+    let responseObject = try decoder.decode(OneKeyedResponse<String>.self, from: responseData)
+
+    if responseObject.key != "name" {
+      throw StorageError(message: "failed to parse response - missing 'name'")
     }
-    return dict
+
+    return responseObject.value
+  }
+
+  /// Updates a Storage bucket
+  ///
+  /// > A bucket with `id` must already exist
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: `update`
+  /// > - `objects` table permissions: none
+  ///
+  /// - Parameters:
+  ///   - isPublic: The visibility of the bucket.
+  /// - Returns: newly created bucket ID
+  public func updateBucket(id: String, isPublic: Bool = false) async throws {
+    let url = newUrl.appendingPathComponent("/bucket/\(id)")
+
+    let body = Bucket.CreateRequest(id: id, isPublic: isPublic)
+
+    let responseData = try await fetch(
+      url: url,
+      method: .put,
+      json: body,
+      headers: headers
+    )
+
+    let responseObject = try decoder.decode(OneKeyedResponse<String>.self, from: responseData)
+
+    guard responseObject.key == "message", responseObject.value == "Successfully updated" else {
+      throw StorageError(message: "'\(responseObject.key)' = '\(responseObject.value)'")
+    }
   }
 
   /// Removes all objects inside a single bucket.
-  /// - Parameters:
-  ///   - id: The unique identifier of the bucket you would like to empty.
-  public func emptyBucket(id: String) async throws -> [String: Any] {
-    guard let url = URL(string: "\(url)/bucket/\(id)/empty") else {
-      throw StorageError(message: "badURL")
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: `select`
+  /// > - `objects` table permissions: `select` and `delete`
+  ///
+  /// - Parameter id: The unique identifier of the bucket you would like to empty.
+  public func emptyBucket(id: String) async throws {
+    let url = newUrl.appendingPathComponent("/bucket/\(id)/empty")
+
+    let responseData = try await fetch(
+      url: url,
+      method: .post
+    )
+
+    let responseObject = try decoder.decode(OneKeyedResponse<String>.self, from: responseData)
+
+    if responseObject.key != "message" {
+      throw StorageError(message: "failed to parse response - missing 'message'")
     }
 
-    let response = try await fetch(url: url, method: .post, parameters: [:], headers: headers)
-    guard let dict = response as? [String: Any] else {
-      throw StorageError(message: "failed to parse response")
+    if responseObject.value != "Successfully emptied" {
+      throw StorageError(message: "response error: \(responseObject.value)")
     }
-    return dict
   }
 
   /// Deletes an existing bucket. A bucket can't be deleted with existing objects inside it.
-  /// You must first `empty()` the bucket.
+  ///
+  /// > You must first empty the bucket using ``emptyBucket(id:)``
+  ///
+  /// > RLS policy permissions required:
+  /// > - `buckets` table permissions: `select` and `delete`
+  /// > - `objects` table permissions: none
+  ///
   /// - Parameters:
   ///   - id: The unique identifier of the bucket you would like to delete.
-  public func deleteBucket(id: String) async throws -> [String: Any] {
-    guard let url = URL(string: "\(url)/bucket/\(id)") else {
-      throw StorageError(message: "badURL")
-    }
+  public func deleteBucket(id: String) async throws {
+    let url = newUrl.appendingPathComponent("/bucket/\(id)")
 
-    let response = try await fetch(url: url, method: .delete, parameters: [:], headers: headers)
-    guard let dict = response as? [String: Any] else {
+    let responseData = try await fetch(
+      url: url,
+      method: .delete
+    )
+
+    let responseObject = try decoder.decode(OneKeyedResponse<String>.self, from: responseData)
+
+    if responseObject.key == "id" {
       throw StorageError(message: "failed to parse response")
     }
-    return dict
+
+    if responseObject.value != "Successfully deleted" {
+      throw StorageError(message: "unknown error")
+    }
   }
 }

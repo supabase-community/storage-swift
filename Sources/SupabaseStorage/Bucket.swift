@@ -1,4 +1,4 @@
-public struct Bucket {
+public struct Bucket: Decodable {
   public var id: String
   public var name: String
   public var owner: String
@@ -6,23 +6,20 @@ public struct Bucket {
   public var createdAt: String
   public var updatedAt: String
 
-  init?(from dictionary: [String: Any]) {
-    guard
-      let id = dictionary["id"] as? String,
-      let name = dictionary["name"] as? String,
-      let owner = dictionary["owner"] as? String,
-      let createdAt = dictionary["created_at"] as? String,
-      let updatedAt = dictionary["updated_at"] as? String,
-      let isPublic = dictionary["public"] as? Bool
-    else {
-      return nil
-    }
-
-    self.id = id
-    self.name = name
-    self.owner = owner
-    self.isPublic = isPublic
-    self.createdAt = createdAt
-    self.updatedAt = updatedAt
+  enum CodingKeys: String, CodingKey {
+    case id
+    case name
+    case owner
+    case isPublic = "public"
+    case createdAt = "created_at"
+    case updatedAt = "updated_at"
   }
+}
+
+public extension Bucket {
+  @available(swift, deprecated: 5.8, renamed: "createdAt")
+  var created_at: String { "\(createdAt)" }
+
+  @available(swift, obsoleted: 5.7, deprecated: 5.8, renamed: "createdAt")
+  var updated_at: String { "\(createdAt)" }
 }

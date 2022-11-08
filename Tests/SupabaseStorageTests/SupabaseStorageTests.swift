@@ -20,7 +20,7 @@ final class SupabaseStorageTests: XCTestCase {
   }
 
   static func storageURL() -> String {
-    if let url = ProcessInfo.processInfo.environment["StorageURL"] {
+    if let url = ProcessInfo.processInfo.environment["storageURL"] {
       return url
     } else {
       fatalError()
