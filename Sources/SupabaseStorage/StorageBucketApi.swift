@@ -21,7 +21,7 @@ public class StorageBucketApi: StorageApi {
   /// > - `objects` table permissions: none
   ///
   public func listBuckets() async throws -> [Bucket] {
-    let url = newUrl.appendingPathComponent("bucket")
+    let url = url.appendingPathComponent("bucket")
 
     let responseData = try await fetch(
       url: url,
@@ -44,7 +44,7 @@ public class StorageBucketApi: StorageApi {
   /// - Parameters:
   ///   - id: The unique identifier of the bucket you would like to retrieve.
   public func getBucket(id: String) async throws -> Bucket {
-    let url = newUrl.appendingPathComponent("/bucket/\(id)")
+    let url = url.appendingPathComponent("/bucket/\(id)")
 
     let responseData = try await fetch(
       url: url,
@@ -69,7 +69,7 @@ public class StorageBucketApi: StorageApi {
   ///   - isPublic: The visibility of the bucket.
   /// - Returns: newly created bucket ID
   public func createBucket(id: String, isPublic: Bool = false) async throws -> String {
-    let url = newUrl.appendingPathComponent("/bucket")
+    let url = url.appendingPathComponent("/bucket")
 
     let body = Bucket.CreateRequest(id: id, isPublic: isPublic)
 
@@ -101,7 +101,7 @@ public class StorageBucketApi: StorageApi {
   ///   - isPublic: The visibility of the bucket.
   /// - Returns: newly created bucket ID
   public func updateBucket(id: String, isPublic: Bool = false) async throws {
-    let url = newUrl.appendingPathComponent("/bucket/\(id)")
+    let url = url.appendingPathComponent("/bucket/\(id)")
 
     let body = Bucket.CreateRequest(id: id, isPublic: isPublic)
 
@@ -127,7 +127,7 @@ public class StorageBucketApi: StorageApi {
   ///
   /// - Parameter id: The unique identifier of the bucket you would like to empty.
   public func emptyBucket(id: String) async throws {
-    let url = newUrl.appendingPathComponent("/bucket/\(id)/empty")
+    let url = url.appendingPathComponent("/bucket/\(id)/empty")
 
     let responseData = try await fetch(
       url: url,
@@ -156,7 +156,7 @@ public class StorageBucketApi: StorageApi {
   /// - Parameters:
   ///   - id: The unique identifier of the bucket you would like to delete.
   public func deleteBucket(id: String) async throws {
-    let url = newUrl.appendingPathComponent("/bucket/\(id)")
+    let url = url.appendingPathComponent("/bucket/\(id)")
 
     let responseData = try await fetch(
       url: url,

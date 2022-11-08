@@ -12,21 +12,20 @@ public class StorageApi {
 
   let encoder: JSONEncoder = .init()
 
-  var url: String { newUrl.absoluteString }
-  var newUrl: URL
+  var url: URL
 
   var headers: [String: String]
   var http: StorageHTTPClient
 
   init(url: URL, headers: [String: String], http: StorageHTTPClient) {
-    newUrl = url
+    self.url = url
     self.headers = headers
     self.http = http
     //        self.headers.merge(["Content-Type": "application/json"]) { $1 }
   }
 
   init(url: String, headers: [String: String], http: StorageHTTPClient) {
-    newUrl = URL(string: url)!
+    self.url = URL(string: url)!
     self.headers = headers
     self.http = http
     //        self.headers.merge(["Content-Type": "application/json"]) { $1 }
