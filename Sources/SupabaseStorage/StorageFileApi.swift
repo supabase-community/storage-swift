@@ -18,6 +18,17 @@ public class StorageFileApi: StorageApi {
     self.bucketId = bucketId
     super.init(url: url, headers: headers, http: http)
   }
+    
+    /// StorageFileApi initializer
+    /// - Parameters:
+    ///   - url: Storage HTTP URL
+    ///   - headers: HTTP headers.
+    ///   - bucketId: The bucket id to operate on.
+    init(url: URL, headers: [String: String], bucketId: String, http: StorageHTTPClient) {
+        self.bucketId = bucketId
+        super.init(url: url, headers: headers, http: http)
+    }
+    
 
   /// Uploads a file to an existing bucket.
   ///
@@ -32,7 +43,7 @@ public class StorageFileApi: StorageApi {
   /// - Returns: Key of the file `bucketID/path`
   @discardableResult
   public func upload(path: String, file: File, fileOptions: FileOptions?) async throws -> String {
-    let url = newUrl.appendingPathComponent("/object/\(bucketId)/\(path)")
+    let url = url.appendingPathComponent("/object/\(bucketId)/\(path)")
 
     let formData = FormData()
     formData.append(file: file)
@@ -69,7 +80,7 @@ public class StorageFileApi: StorageApi {
   /// - Returns: Key of the file `bucketID/path`
   @discardableResult
   public func update(path: String, file: File, fileOptions: FileOptions?) async throws -> String {
-    let url = newUrl.appendingPathComponent("/object/\(bucketId)/\(path)")
+    let url = url.appendingPathComponent("/object/\(bucketId)/\(path)")
 
     let formData = FormData()
     formData.append(file: file)
@@ -103,7 +114,7 @@ public class StorageFileApi: StorageApi {
   ///   - toPath: The new file path, including the new file name. For example
   /// `folder/image-copy.png`.
   public func move(fromPath: String, toPath: String) async throws {
-    let url = newUrl.appendingPathComponent("/object/move")
+    let url = url.appendingPathComponent("/object/move")
 
     let body = MoveFileRequest(
       bucketID: bucketId,
@@ -139,7 +150,7 @@ public class StorageFileApi: StorageApi {
   ///   - expiresIn: The number of seconds until the signed URL expires. For example, `60` for a URL
   /// which is valid for one minute.
   public func createSignedURL(path: String, expiresIn: Int) async throws -> URL {
-    let url = newUrl.appendingPathComponent("/object/sign/\(bucketId)/\(path)")
+    let url = url.appendingPathComponent("/object/sign/\(bucketId)/\(path)")
 
     let responseData = try await fetch(
       url: url,
@@ -156,7 +167,7 @@ public class StorageFileApi: StorageApi {
       throw StorageError(message: "failed to parse response")
     }
 
-    guard let url = URL(string: newUrl.absoluteString + responseObject.value) else {
+    guard let url = URL(string: url.absoluteString + responseObject.value) else {
       throw StorageError(message: "failed to construct signed url with '\(responseObject.value)'")
     }
 
@@ -173,7 +184,7 @@ public class StorageFileApi: StorageApi {
   ///   - paths: An array of files to be deletes, including the path and file name. For example
   /// [`folder/image.png`].
   public func remove(paths: [String]) async throws -> [FileObject] {
-    let url = newUrl.appendingPathComponent("/object/\(bucketId)")
+    let url = url.appendingPathComponent("/object/\(bucketId)")
 
     let responseData = try await fetch(
       url: url,
@@ -204,7 +215,7 @@ public class StorageFileApi: StorageApi {
     path: String? = nil,
     options: SearchOptions? = nil
   ) async throws -> [FileObject] {
-    let url = newUrl.appendingPathComponent("/object/list/\(bucketId)")
+    let url = url.appendingPathComponent("/object/list/\(bucketId)")
 
     let body = FileListRequest(
       path: path,
@@ -235,7 +246,7 @@ public class StorageFileApi: StorageApi {
   ///     For example `folder/image.png`.
   @discardableResult
   public func download(path: String) async throws -> Data {
-    let url = newUrl.appendingPathComponent("/object/\(bucketId)/\(path)")
+    let url = url.appendingPathComponent("/object/\(bucketId)/\(path)")
 
     let responseData = try await fetch(url: url, json: nil)
 
