@@ -118,11 +118,12 @@ public class StorageFileApi: StorageApi {
     )
     guard
       let dict = response as? [String: Any],
-      let signedURL: String = dict["signedURL"] as? String
+      let signedURLString = dict["signedURL"] as? String,
+      let signedURL = URL(string: self.url.appending(signedURLString))
     else {
       throw StorageError(message: "failed to parse response")
     }
-    return url.appendingPathComponent(signedURL)
+    return signedURL
   }
 
   /// Deletes files within the same bucket
