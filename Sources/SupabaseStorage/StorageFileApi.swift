@@ -184,4 +184,46 @@ public class StorageFileApi: StorageApi {
     }
     return data
   }
+    
+    /// Returns a public url for an asset.
+    /// - Parameters:
+    ///  - path: The file path to the asset. For example `folder/image.png`.
+    ///  - download: Whether the asset should be downloaded.
+    ///  - fileName: If specified, the file name for the asset that is downloaded.
+    ///  - options: Transform the asset before retrieving it on the client.
+    public func getPublicUrl(
+        path: String,
+        download: Bool = false,
+        fileName: String = "",
+        options: TransformOptions? = nil
+    ) throws -> URL {
+        var queryStrings = [String]()
+        
+        if download {
+            queryStrings.append("download=\(fileName)")
+        }
+        
+        let renderPath: String
+        
+        if let options = options {
+            renderPath = "render/image"
+            queryStrings.append(options.asQueryString())
+        } else {
+            renderPath = "object"
+        }
+        
+        let query: String
+        
+        if queryStrings.isEmpty {
+            query = ""
+        } else {
+            query = "?\(queryStrings.joined(separator: "&"))"
+        }
+        
+        guard let url = URL(string: "\(url)/\(renderPath)/public/\(path)\(query)") else {
+            throw StorageError(message: "badURL")
+        }
+        
+        return url
+    }
 }

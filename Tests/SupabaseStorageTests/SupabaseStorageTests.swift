@@ -54,4 +54,11 @@ final class SupabaseStorageTests: XCTestCase {
     let data = try await storage.from(id: bucket).download(path: "README.md")
     XCTAssertFalse(data.isEmpty)
   }
+    
+    func testGetPublicUrl() throws {
+        let urlWithNoQuery = try storage.from(id: bucket).getPublicUrl(path: "README.md")
+        XCTAssertNil(urlWithNoQuery.query)
+        let urlWithQuery = try storage.from(id: bucket).getPublicUrl(path: "README.md", download: true)
+        XCTAssertNotNil(urlWithQuery.query)
+    }
 }
