@@ -1,3 +1,5 @@
+import Foundation
+
 public struct TransformOptions {
     public var width: Int?
     public var height: Int?
@@ -19,29 +21,29 @@ public struct TransformOptions {
         self.format = format
     }
     
-    func asQueryString() -> String {
-        var parameters = [String]()
+    var queryItems: [URLQueryItem] {
+        var items = [URLQueryItem]()
         
         if let width = width {
-            parameters.append("width=\(width)")
+            items.append(URLQueryItem(name: "width", value: String(width)))
         }
         
         if let height = height {
-            parameters.append("height=\(height)")
+            items.append(URLQueryItem(name: "height", value: String(height)))
         }
         
         if let resize = resize {
-            parameters.append("resize=\(resize)")
-        }
-        
-        if let format = format {
-            parameters.append("format=\(format)")
+            items.append(URLQueryItem(name: "resize", value: resize))
         }
         
         if let quality = quality {
-            parameters.append("quality=\(quality)")
+            items.append(URLQueryItem(name: "quality", value: String(quality)))
         }
         
-        return parameters.joined(separator: "&")
+        if let format = format {
+            items.append(URLQueryItem(name: "format", value: format))
+        }
+        
+        return items
     }
 }

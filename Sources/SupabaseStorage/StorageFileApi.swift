@@ -197,33 +197,25 @@ public class StorageFileApi: StorageApi {
         fileName: String = "",
         options: TransformOptions? = nil
     ) throws -> URL {
-        var queryStrings = [String]()
-        
-        if download {
-            queryStrings.append("download=\(fileName)")
-        }
-        
-        let renderPath: String
-        
-        if let options = options {
-            renderPath = "render/image"
-            queryStrings.append(options.asQueryString())
-        } else {
-            renderPath = "object"
-        }
-        
-        let query: String
-        
-        if queryStrings.isEmpty {
-            query = ""
-        } else {
-            query = "?\(queryStrings.joined(separator: "&"))"
-        }
-        
-        guard let url = URL(string: "\(url)/\(renderPath)/public/\(path)\(query)") else {
+        guard let url = URL(string: url) else {
             throw StorageError(message: "badURL")
         }
         
-        return url
+        let renderPath = options != nil ? "render/image" : "object"
+        
+        let downloadQueryItem = download ? [URLQueryItem(name: "download", value: fileName)] : []
+        let optionsQueryItems = options?.queryItems ?? []
+        
+        var components = URLComponents()
+        components.scheme = url.scheme
+        components.host = url.host
+        components.path = "\(renderPath)/public/\(path)"
+        components.queryItems = downloadQueryItem + optionsQueryItems
+        
+        guard let generatedUrl = components.url else {
+            throw StorageError(message: "badUrl")
+        }
+        
+        return generatedUrl
     }
 }
