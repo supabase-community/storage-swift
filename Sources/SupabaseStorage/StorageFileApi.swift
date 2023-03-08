@@ -4,6 +4,15 @@ import Foundation
   import FoundationNetworking
 #endif
 
+let DEFAULT_SEARCH_OPTIONS = SearchOptions(
+  limit: 100,
+  offset: 0,
+  sortBy: SortBy(
+    column: "name",
+    order: "asc"
+  )
+)
+
 /// Supabase Storage File API
 public class StorageFileApi: StorageApi {
   /// The bucket id to operate on.
@@ -150,16 +159,20 @@ public class StorageFileApi: StorageApi {
       throw StorageError(message: "badURL")
     }
 
-    var sortBy: [String: String] = [:]
-    sortBy["column"] = options?.sortBy?.column ?? "name"
-    sortBy["order"] = options?.sortBy?.order ?? "asc"
+    var parameters: [String: Any] = ["prefix": path ?? ""]
+    parameters["limit"] = options?.limit ?? DEFAULT_SEARCH_OPTIONS.limit
+    parameters["offset"] = options?.offset ?? DEFAULT_SEARCH_OPTIONS.offset
+    parameters["search"] = options?.search ?? DEFAULT_SEARCH_OPTIONS.search
+
+    if let sortBy = options?.sortBy ?? DEFAULT_SEARCH_OPTIONS.sortBy {
+      parameters["sortBy"] = [
+        "column": sortBy.column,
+        "order": sortBy.order,
+      ]
+    }
 
     let response = try await fetch(
-      url: url, method: .post,
-      parameters: [
-        "prefix": path ?? "", "limit": options?.limit ?? 100, "offset": options?.offset ?? 0,
-      ], headers: headers
-    )
+      url: url, method: .post, parameters: parameters, headers: headers)
 
     guard let array = response as? [[String: Any]] else {
       throw StorageError(message: "failed to parse response")

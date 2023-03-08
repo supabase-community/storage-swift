@@ -16,7 +16,7 @@ let package = Package(
     .library(
       name: "SupabaseStorage",
       targets: ["SupabaseStorage"]
-    ),
+    )
   ],
   dependencies: [],
   targets: [
