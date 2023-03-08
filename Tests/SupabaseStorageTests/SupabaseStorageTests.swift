@@ -8,23 +8,31 @@ import XCTest
 #endif
 
 final class SupabaseStorageTests: XCTestCase {
-  let storage = SupabaseStorageClient(url: storageURL(), headers: ["Authorization": token()])
+  let storage = SupabaseStorageClient(
+    url: "\(supabaseURL)/storage/v1",
+    headers: [
+      "Authorization": "Bearer \(apiKey)",
+      "apikey": apiKey,
+    ]
+  )
   let bucket = "Test"
 
-  static func token() -> String {
-    if let token = ProcessInfo.processInfo.environment["Authorization"] {
-      return token
-    } else {
-      fatalError()
+  static var apiKey: String {
+    if let apiKey = ProcessInfo.processInfo.environment["apiKey"] {
+      return apiKey
     }
+
+    XCTFail("apiKey not found.")
+    return ""
   }
 
-  static func storageURL() -> String {
-    if let url = ProcessInfo.processInfo.environment["StorageURL"] {
+  static var supabaseURL: String {
+    if let url = ProcessInfo.processInfo.environment["supabaseURL"] {
       return url
-    } else {
-      fatalError()
     }
+
+    XCTFail("supabaseURL not found.")
+    return ""
   }
 
   func testCreateBucket() async throws {
@@ -53,5 +61,10 @@ final class SupabaseStorageTests: XCTestCase {
   func testDownloadFile() async throws {
     let data = try await storage.from(id: bucket).download(path: "README.md")
     XCTAssertFalse(data.isEmpty)
+  }
+
+  func testListFiles() async throws {
+    let objects = try await storage.from(id: "public").list()
+    XCTAssertEqual(objects.count, 4)
   }
 }
