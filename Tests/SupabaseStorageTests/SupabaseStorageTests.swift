@@ -8,23 +8,31 @@ import XCTest
 #endif
 
 final class SupabaseStorageTests: XCTestCase {
-  let storage = SupabaseStorageClient(url: storageURL(), headers: ["Authorization": token()])
+  let storage = SupabaseStorageClient(
+    url: "\(supabaseURL)/storage/v1",
+    headers: [
+      "Authorization": "Bearer \(apiKey)",
+      "apikey": apiKey,
+    ]
+  )
   let bucket = "Test"
 
-  static func token() -> String {
-    if let token = ProcessInfo.processInfo.environment["Authorization"] {
-      return token
-    } else {
-      fatalError()
+  static var apiKey: String {
+    if let apiKey = ProcessInfo.processInfo.environment["apiKey"] {
+      return apiKey
     }
+
+    XCTFail("apiKey not found.")
+    return ""
   }
 
-  static func storageURL() -> String {
-    if let url = ProcessInfo.processInfo.environment["StorageURL"] {
+  static var supabaseURL: String {
+    if let url = ProcessInfo.processInfo.environment["supabaseURL"] {
       return url
-    } else {
-      fatalError()
     }
+
+    XCTFail("supabaseURL not found.")
+    return ""
   }
 
   func testCreateBucket() async throws {
@@ -54,11 +62,25 @@ final class SupabaseStorageTests: XCTestCase {
     let data = try await storage.from(id: bucket).download(path: "README.md")
     XCTAssertFalse(data.isEmpty)
   }
+
+  func testListFiles() async throws {
+    let objects = try await storage.from(id: "public").list()
+    XCTAssertEqual(objects.count, 4)
+  }
     
     func testGetPublicUrl() throws {
-        let urlWithNoQuery = try storage.from(id: bucket).getPublicUrl(path: "README.md")
-        XCTAssertNil(urlWithNoQuery.query)
-        let urlWithQuery = try storage.from(id: bucket).getPublicUrl(path: "README.md", download: true)
-        XCTAssertNotNil(urlWithQuery.query)
+        let path = "README.md"
+        
+        let baseUrl = try storage.from(id: bucket).getPublicUrl(path: path)
+        XCTAssertEqual(baseUrl.absoluteString, "\(Self.supabaseURL)/object/public/\(path)?")
+        
+        let baseUrlWithDownload = try storage.from(id: bucket).getPublicUrl(path: path, download: true)
+        XCTAssertEqual(baseUrlWithDownload.absoluteString, "\(Self.supabaseURL)/object/public/\(path)?download=")
+        
+        let baseUrlWithDownloadAndFileName = try storage.from(id: bucket).getPublicUrl(path: path, download: true, fileName: "test")
+        XCTAssertEqual(baseUrlWithDownloadAndFileName.absoluteString, "\(Self.supabaseURL)/object/public/\(path)?download=test")
+        
+        let baseUrlWithAllOptions = try storage.from(id: bucket).getPublicUrl(path: path, download: true, fileName: "test", options: TransformOptions(width: 300, height: 300))
+        XCTAssertEqual(baseUrlWithAllOptions.absoluteString, "\(Self.supabaseURL)/render/image/public/\(path)?download=test&width=300&height=300&resize=cover&quality=80&format=origin")
     }
 }

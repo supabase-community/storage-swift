@@ -4,6 +4,15 @@ import Foundation
   import FoundationNetworking
 #endif
 
+let DEFAULT_SEARCH_OPTIONS = SearchOptions(
+  limit: 100,
+  offset: 0,
+  sortBy: SortBy(
+    column: "name",
+    order: "asc"
+  )
+)
+
 /// Supabase Storage File API
 public class StorageFileApi: StorageApi {
   /// The bucket id to operate on.
@@ -97,7 +106,7 @@ public class StorageFileApi: StorageApi {
   ///   - expiresIn: The number of seconds until the signed URL expires. For example, `60` for a URL
   /// which is valid for one minute.
   public func createSignedURL(path: String, expiresIn: Int) async throws -> URL {
-    guard let url = URL(string: "\(url)/object/sign/\(path)") else {
+    guard let url = URL(string: "\(url)/object/sign/\(bucketId)/\(path)") else {
       throw StorageError(message: "badURL")
     }
 
@@ -109,11 +118,12 @@ public class StorageFileApi: StorageApi {
     )
     guard
       let dict = response as? [String: Any],
-      let signedURL: String = dict["signedURL"] as? String
+      let signedURLString = dict["signedURL"] as? String,
+      let signedURL = URL(string: self.url.appending(signedURLString))
     else {
       throw StorageError(message: "failed to parse response")
     }
-    return url.appendingPathComponent(signedURL)
+    return signedURL
   }
 
   /// Deletes files within the same bucket
@@ -150,16 +160,20 @@ public class StorageFileApi: StorageApi {
       throw StorageError(message: "badURL")
     }
 
-    var sortBy: [String: String] = [:]
-    sortBy["column"] = options?.sortBy?.column ?? "name"
-    sortBy["order"] = options?.sortBy?.order ?? "asc"
+    var parameters: [String: Any] = ["prefix": path ?? ""]
+    parameters["limit"] = options?.limit ?? DEFAULT_SEARCH_OPTIONS.limit
+    parameters["offset"] = options?.offset ?? DEFAULT_SEARCH_OPTIONS.offset
+    parameters["search"] = options?.search ?? DEFAULT_SEARCH_OPTIONS.search
+
+    if let sortBy = options?.sortBy ?? DEFAULT_SEARCH_OPTIONS.sortBy {
+      parameters["sortBy"] = [
+        "column": sortBy.column,
+        "order": sortBy.order,
+      ]
+    }
 
     let response = try await fetch(
-      url: url, method: .post,
-      parameters: [
-        "prefix": path ?? "", "limit": options?.limit ?? 100, "offset": options?.offset ?? 0,
-      ], headers: headers
-    )
+      url: url, method: .post, parameters: parameters, headers: headers)
 
     guard let array = response as? [[String: Any]] else {
       throw StorageError(message: "failed to parse response")
@@ -197,7 +211,7 @@ public class StorageFileApi: StorageApi {
         fileName: String = "",
         options: TransformOptions? = nil
     ) throws -> URL {
-        guard let url = URL(string: url) else {
+        guard var components = URLComponents(string: url) else {
             throw StorageError(message: "badURL")
         }
         
@@ -206,10 +220,7 @@ public class StorageFileApi: StorageApi {
         let downloadQueryItem = download ? [URLQueryItem(name: "download", value: fileName)] : []
         let optionsQueryItems = options?.queryItems ?? []
         
-        var components = URLComponents()
-        components.scheme = url.scheme
-        components.host = url.host
-        components.path = "\(renderPath)/public/\(path)"
+        components.path = "/\(renderPath)/public/\(path)"
         components.queryItems = downloadQueryItem + optionsQueryItems
         
         guard let generatedUrl = components.url else {

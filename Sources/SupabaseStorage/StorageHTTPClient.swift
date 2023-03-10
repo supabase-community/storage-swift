@@ -31,7 +31,10 @@ public struct DefaultStorageHTTPClient: StorageHTTPClient {
     }
   }
 
-  public func upload(_ request: URLRequest, from data: Data) async throws -> (Data, HTTPURLResponse) {
+  public func upload(
+    _ request: URLRequest,
+    from data: Data
+  ) async throws -> (Data, HTTPURLResponse) {
     try await withCheckedThrowingContinuation { continuation in
       let task = URLSession.shared.uploadTask(with: request, from: data) { data, response, error in
         if let error = error {
