@@ -106,7 +106,7 @@ public class StorageFileApi: StorageApi {
   ///   - expiresIn: The number of seconds until the signed URL expires. For example, `60` for a URL
   /// which is valid for one minute.
   public func createSignedURL(path: String, expiresIn: Int) async throws -> URL {
-    guard let url = URL(string: "\(url)/object/sign/\(path)") else {
+    guard let url = URL(string: "\(url)/object/sign/\(bucketId)/\(path)") else {
       throw StorageError(message: "badURL")
     }
 
@@ -118,11 +118,12 @@ public class StorageFileApi: StorageApi {
     )
     guard
       let dict = response as? [String: Any],
-      let signedURL: String = dict["signedURL"] as? String
+      let signedURLString = dict["signedURL"] as? String,
+      let signedURL = URL(string: self.url.appending(signedURLString))
     else {
       throw StorageError(message: "failed to parse response")
     }
-    return url.appendingPathComponent(signedURL)
+    return signedURL
   }
 
   /// Deletes files within the same bucket
