@@ -198,4 +198,35 @@ public class StorageFileApi: StorageApi {
     }
     return data
   }
+    
+    /// Returns a public url for an asset.
+    /// - Parameters:
+    ///  - path: The file path to the asset. For example `folder/image.png`.
+    ///  - download: Whether the asset should be downloaded.
+    ///  - fileName: If specified, the file name for the asset that is downloaded.
+    ///  - options: Transform the asset before retrieving it on the client.
+    public func getPublicUrl(
+        path: String,
+        download: Bool = false,
+        fileName: String = "",
+        options: TransformOptions? = nil
+    ) throws -> URL {
+        guard var components = URLComponents(string: url) else {
+            throw StorageError(message: "badURL")
+        }
+        
+        let renderPath = options != nil ? "render/image" : "object"
+        
+        let downloadQueryItem = download ? [URLQueryItem(name: "download", value: fileName)] : []
+        let optionsQueryItems = options?.queryItems ?? []
+        
+        components.path = "/\(renderPath)/public/\(path)"
+        components.queryItems = downloadQueryItem + optionsQueryItems
+        
+        guard let generatedUrl = components.url else {
+            throw StorageError(message: "badUrl")
+        }
+        
+        return generatedUrl
+    }
 }
