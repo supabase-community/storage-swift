@@ -175,8 +175,8 @@ guard let url = try? await storageClient?.createSignedURL(path: imageUrl, expire
     return
 }
 DispatchQueue.main.async {
-    let data = try? Data(contentsOf: url!) //make sure your image in this url does exist, otherwise unwrap in a if let check / try-catch
-    self.imageView.image = UIImage(data: data!)
+    guard let data = try? Data(contentsOf: url) else { return }
+    self.imageView.image = UIImage(data: data)
 }
 ```
 
