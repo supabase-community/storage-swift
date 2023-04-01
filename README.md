@@ -65,7 +65,6 @@ class SupabaseProvider {
     
     private let apiDictionaryKey = "supabase-key"
     private let supabaseUrlKey = "supabase-url"
-    private let discordUrlKey = "discord-callback-url"
     
     private init() {}
     
@@ -100,13 +99,6 @@ class SupabaseProvider {
             fatalError("Your Keys.plist must have a key of: \(supabaseUrlKey) and a corresponding value of type String.")
         }
         return URL(string: url)!
-    }
-    
-    var discordCallbackUrl: String {
-        guard let url = keysPlist[discordUrlKey] as? String else {
-            fatalError("Your Keys.plist must have a key of: \(discordUrlKey) and a corresponding value of type String.")
-        }
-        return url
     }
     
     // Storage
@@ -182,10 +174,9 @@ let storageClient = await SupabaseProvider.shared.storageClient(bucketName: "buc
 guard let url = try? await storageClient?.createSignedURL(path: imageUrl, expiresIn: 3600) else {
     return
 }
-if let image = getThumbnailImage(forUrl: url) {
-    DispatchQueue.main.async {
-        self.userPostImageView.image = image
-    }
+DispatchQueue.main.async {
+    let data = try? Data(contentsOf: url!) //make sure your image in this url does exist, otherwise unwrap in a if let check / try-catch
+    self.imageView.image = UIImage(data: data!)
 }
 ```
 
