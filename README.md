@@ -12,7 +12,7 @@ Supabase's website. You will need to create policies on each bucket individually
 or use global ones on the `storage/object` and `storage/bucket` sections.
 
 For image/video uploads from users, there is a key example on how to setup basic
-RLS for all CRUD operations [here](https://supabase.com/docs/guides/storage/access-control)
+RLS for all CRUD operations [here](https://supabase.com/docs/guides/storage/access-control).
 Pay particular attention to the difference between `USING` and `WITH CHECK` keyword
 for POSTGRES SQL.
 
@@ -60,7 +60,7 @@ func storageClient(bucketName: String = "photos") async -> StorageFileApi? {
 Architecturally, a pattern you can follow is holding these values and functions in a provider class using a simple Singleton pattern
 or inject it with something like `Resolver`.
 
-```
+```Swift
 class SupabaseProvider {
     
     private let apiDictionaryKey = "supabase-key"
