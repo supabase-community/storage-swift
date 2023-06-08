@@ -52,7 +52,10 @@ public class StorageBucketApi: StorageApi {
   /// - Parameters:
   ///   - id: A unique identifier for the bucket you are creating.
   ///   - completion: newly created bucket id
-  public func createBucket(id: String, options: BucketOptions = .init()) async throws -> [String: Any] {
+  public func createBucket(
+    id: String,
+    options: BucketOptions = .init()
+  ) async throws -> [String: Any] {
     guard let url = URL(string: "\(url)/bucket") else {
       throw StorageError(message: "badURL")
     }
