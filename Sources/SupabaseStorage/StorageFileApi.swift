@@ -130,7 +130,7 @@ public class StorageFileApi: StorageApi {
   /// - Parameters:
   ///   - paths: An array of files to be deletes, including the path and file name. For example
   /// [`folder/image.png`].
-  public func remove(paths: [String]) async throws -> [String: Any] {
+  public func remove(paths: [String]) async throws -> [FileObject] {
     guard let url = URL(string: "\(url)/object/\(bucketId)") else {
       throw StorageError(message: "badURL")
     }
@@ -141,11 +141,11 @@ public class StorageFileApi: StorageApi {
       parameters: ["prefixes": paths],
       headers: headers
     )
-    guard let dict = response as? [String: Any] else {
+    guard let array = response as? [[String: Any]] else {
       throw StorageError(message: "failed to parse response")
     }
 
-    return dict
+    return array.compactMap { FileObject(from: $0) }
   }
 
   /// Lists all the files within a bucket.
