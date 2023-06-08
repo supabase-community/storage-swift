@@ -1,4 +1,4 @@
-public struct Bucket {
+public struct Bucket: Hashable {
   public var id: String
   public var name: String
   public var owner: String

@@ -52,26 +52,38 @@ public class StorageBucketApi: StorageApi {
   /// - Parameters:
   ///   - id: A unique identifier for the bucket you are creating.
   ///   - completion: newly created bucket id
-  public func createBucket(id: String) async throws -> [String: Any] {
+  public func createBucket(id: String, options: BucketOptions = .init()) async throws -> [String: Any] {
     guard let url = URL(string: "\(url)/bucket") else {
       throw StorageError(message: "badURL")
     }
 
+    var params: [String: Any] = [
+      "id": id,
+      "name": id,
+    ]
+
+    params["public"] = options.public
+    params["file_size_limit"] = options.fileSizeLimit
+    params["allowed_mime_types"] = options.allowedMimeTypes
+
     let response = try await fetch(
       url: url,
       method: .post,
-      parameters: ["id": id, "name": id],
+      parameters: params,
       headers: headers
     )
+
     guard let dict = response as? [String: Any] else {
       throw StorageError(message: "failed to parse response")
     }
+
     return dict
   }
 
   /// Removes all objects inside a single bucket.
   /// - Parameters:
   ///   - id: The unique identifier of the bucket you would like to empty.
+  @discardableResult
   public func emptyBucket(id: String) async throws -> [String: Any] {
     guard let url = URL(string: "\(url)/bucket/\(id)/empty") else {
       throw StorageError(message: "badURL")
