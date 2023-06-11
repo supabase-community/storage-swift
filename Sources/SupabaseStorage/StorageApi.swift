@@ -106,10 +106,10 @@ public class StorageApi {
   private func parse(response: Any, statusCode: Int) throws -> Any {
     if statusCode == 200 || 200..<300 ~= statusCode {
       return response
-    } else if let dict = response as? [String: Any], let error = dict["error"] as? String {
-      throw StorageError(statusCode: statusCode, message: error)
     } else if let dict = response as? [String: Any], let message = dict["message"] as? String {
       throw StorageError(statusCode: statusCode, message: message)
+    } else if let dict = response as? [String: Any], let error = dict["error"] as? String {
+      throw StorageError(statusCode: statusCode, message: error)
     } else {
       throw StorageError(statusCode: statusCode, message: "something went wrong")
     }
