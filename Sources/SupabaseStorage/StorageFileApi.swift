@@ -23,9 +23,9 @@ public class StorageFileApi: StorageApi {
   ///   - url: Storage HTTP URL
   ///   - headers: HTTP headers.
   ///   - bucketId: The bucket id to operate on.
-  init(url: String, headers: [String: String], bucketId: String, http: StorageHTTPClient) {
+  init(url: String, headers: [String: String], bucketId: String, session: StorageHTTPSession) {
     self.bucketId = bucketId
-    super.init(url: url, headers: headers, http: http)
+    super.init(url: url, headers: headers, session: session)
   }
 
   /// Uploads a file to an existing bucket.

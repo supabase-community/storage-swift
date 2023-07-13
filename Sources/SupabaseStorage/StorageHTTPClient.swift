@@ -4,59 +4,25 @@ import Foundation
   import FoundationNetworking
 #endif
 
-public protocol StorageHTTPClient {
-  func fetch(_ request: URLRequest) async throws -> (Data, HTTPURLResponse)
-  func upload(_ request: URLRequest, from data: Data) async throws -> (Data, HTTPURLResponse)
-}
+public struct StorageHTTPSession: Sendable {
+  public let fetch: @Sendable (_ request: URLRequest) async throws -> (Data, URLResponse)
+  public let upload:
+    @Sendable (_ request: URLRequest, _ data: Data) async throws -> (Data, URLResponse)
 
-public struct DefaultStorageHTTPClient: StorageHTTPClient {
-  public init() {}
-
-  public func fetch(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-    try await withCheckedThrowingContinuation { continuation in
-      let dataTask = URLSession.shared.dataTask(with: request) { data, response, error in
-        if let error = error {
-          continuation.resume(throwing: error)
-          return
-        }
-
-        guard
-          let data = data,
-          let httpResponse = response as? HTTPURLResponse
-        else {
-          continuation.resume(throwing: URLError(.badServerResponse))
-          return
-        }
-
-        continuation.resume(returning: (data, httpResponse))
-      }
-
-      dataTask.resume()
-    }
+  public init(
+    fetch: @escaping @Sendable (_ request: URLRequest) async throws -> (Data, URLResponse),
+    upload: @escaping @Sendable (_ request: URLRequest, _ data: Data) async throws -> (
+      Data, URLResponse
+    )
+  ) {
+    self.fetch = fetch
+    self.upload = upload
   }
 
-  public func upload(
-    _ request: URLRequest,
-    from data: Data
-  ) async throws -> (Data, HTTPURLResponse) {
-    try await withCheckedThrowingContinuation { continuation in
-      let task = URLSession.shared.uploadTask(with: request, from: data) { data, response, error in
-        if let error = error {
-          continuation.resume(throwing: error)
-          return
-        }
-
-        guard
-          let data = data,
-          let httpResponse = response as? HTTPURLResponse
-        else {
-          continuation.resume(throwing: URLError(.badServerResponse))
-          return
-        }
-
-        continuation.resume(returning: (data, httpResponse))
-      }
-      task.resume()
-    }
+  public init() {
+    self.init(
+      fetch: { try await URLSession.shared.data(for: $0) },
+      upload: { try await URLSession.shared.upload(for: $0, from: $1) }
+    )
   }
 }

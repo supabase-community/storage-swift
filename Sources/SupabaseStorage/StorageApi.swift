@@ -7,13 +7,12 @@ import Foundation
 public class StorageApi {
   var url: String
   var headers: [String: String]
-  var http: StorageHTTPClient
+  var session: StorageHTTPSession
 
-  init(url: String, headers: [String: String], http: StorageHTTPClient) {
+  init(url: String, headers: [String: String], session: StorageHTTPSession) {
     self.url = url
     self.headers = headers
-    self.http = http
-    //        self.headers.merge(["Content-Type": "application/json"]) { $1 }
+    self.session = session
   }
 
   internal enum HTTPMethod: String {
@@ -49,14 +48,18 @@ public class StorageApi {
       request.httpBody = try JSONSerialization.data(withJSONObject: parameters, options: [])
     }
 
-    let (data, response) = try await http.fetch(request)
-    if let mimeType = response.mimeType {
+    let (data, response) = try await session.fetch(request)
+    guard let httpResonse = response as? HTTPURLResponse else {
+      throw URLError(.badServerResponse)
+    }
+
+    if let mimeType = httpResonse.mimeType {
       switch mimeType {
       case "application/json":
         let json = try JSONSerialization.jsonObject(with: data, options: [])
-        return try parse(response: json, statusCode: response.statusCode)
+        return try parse(response: json, statusCode: httpResonse.statusCode)
       default:
-        return try parse(response: data, statusCode: response.statusCode)
+        return try parse(response: data, statusCode: httpResonse.statusCode)
       }
     } else {
       throw StorageError(message: "failed to get response")
@@ -89,11 +92,14 @@ public class StorageApi {
 
     request.setValue(formData.contentType, forHTTPHeaderField: "Content-Type")
 
-    let (data, response) = try await http.upload(request, from: formData.data)
+    let (data, response) = try await session.upload(request, formData.data)
+    guard let httpResonse = response as? HTTPURLResponse else {
+      throw URLError(.badServerResponse)
+    }
 
     if jsonSerialization {
       let json = try JSONSerialization.jsonObject(with: data, options: [])
-      return try parse(response: json, statusCode: response.statusCode)
+      return try parse(response: json, statusCode: httpResonse.statusCode)
     }
 
     if let dataString = String(data: data, encoding: .utf8) {

@@ -10,8 +10,8 @@ public class StorageBucketApi: StorageApi {
   /// - Parameters:
   ///   - url: Storage HTTP URL
   ///   - headers: HTTP headers.
-  override init(url: String, headers: [String: String], http: StorageHTTPClient) {
-    super.init(url: url, headers: headers, http: http)
+  override init(url: String, headers: [String: String], session: StorageHTTPSession) {
+    super.init(url: url, headers: headers, session: session)
     self.headers.merge(["Content-Type": "application/json"]) { $1 }
   }
 
