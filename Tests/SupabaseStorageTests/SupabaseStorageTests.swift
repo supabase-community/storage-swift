@@ -13,17 +13,23 @@ final class SupabaseStorageTests: XCTestCase {
   }
 
   static var supabaseURL: String {
-    "http://localhost:54321"
+    "http://localhost:54321/storage/v1"
   }
 
   let bucket = "public"
 
   let storage = SupabaseStorageClient(
-    url: "\(supabaseURL)/storage/v1",
+    url: supabaseURL,
     headers: [
       "Authorization": "Bearer \(apiKey)",
       "apikey": apiKey,
     ]
+  )
+
+  let uploadData = try! Data(
+    contentsOf: URL(
+      string: "https://raw.githubusercontent.com/supabase-community/storage-swift/main/README.md"
+    )!
   )
 
   override func setUp() async throws {
@@ -34,29 +40,13 @@ final class SupabaseStorageTests: XCTestCase {
     _ = try await storage.createBucket(id: bucket, options: BucketOptions(public: true))
   }
 
-  override func tearDown() async throws {
-    _ = try? await storage.emptyBucket(id: bucket)
-    _ = try? await storage.deleteBucket(id: bucket)
-    try await super.tearDown()
-  }
-
   func testListBuckets() async throws {
     let buckets = try await storage.listBuckets()
     XCTAssertEqual(buckets.map(\.name), [bucket])
   }
 
   func testFileIntegration() async throws {
-    let uploadData = try! Data(
-      contentsOf: URL(
-        string: "https://raw.githubusercontent.com/supabase-community/storage-swift/main/README.md"
-      )!
-    )
-
-    let file = File(
-      name: "README.md", data: uploadData, fileName: "README.md", contentType: "text/html")
-    _ = try await storage.from(id: bucket).upload(
-      path: "README.md", file: file, fileOptions: FileOptions(cacheControl: "3600")
-    )
+    try await uploadTestData()
 
     let files = try await storage.from(id: bucket).list()
     XCTAssertEqual(files.map(\.name), ["README.md"])
@@ -68,28 +58,39 @@ final class SupabaseStorageTests: XCTestCase {
     XCTAssertEqual(removedFiles.map(\.name), ["README.md"])
   }
 
-  func testGetPublicUrl() throws {
+  func testGetPublicURL() async throws {
+    try await uploadTestData()
+
     let path = "README.md"
 
-    let baseUrl = try storage.from(id: bucket).getPublicUrl(path: path)
-    XCTAssertEqual(baseUrl.absoluteString, "\(Self.supabaseURL)/object/public/\(path)?")
+    let baseUrl = try storage.from(id: bucket).getPublicURL(path: path)
+    XCTAssertEqual(baseUrl.absoluteString, "\(Self.supabaseURL)/object/public/\(bucket)/\(path)")
 
-    let baseUrlWithDownload = try storage.from(id: bucket).getPublicUrl(path: path, download: true)
+    let baseUrlWithDownload = try storage.from(id: bucket).getPublicURL(path: path, download: true)
     XCTAssertEqual(
-      baseUrlWithDownload.absoluteString, "\(Self.supabaseURL)/object/public/\(path)?download=")
+      baseUrlWithDownload.absoluteString,
+      "\(Self.supabaseURL)/object/public/\(bucket)/\(path)?download=")
 
-    let baseUrlWithDownloadAndFileName = try storage.from(id: bucket).getPublicUrl(
+    let baseUrlWithDownloadAndFileName = try storage.from(id: bucket).getPublicURL(
       path: path, download: true, fileName: "test")
     XCTAssertEqual(
       baseUrlWithDownloadAndFileName.absoluteString,
-      "\(Self.supabaseURL)/object/public/\(path)?download=test")
+      "\(Self.supabaseURL)/object/public/\(bucket)/\(path)?download=test")
 
-    let baseUrlWithAllOptions = try storage.from(id: bucket).getPublicUrl(
+    let baseUrlWithAllOptions = try storage.from(id: bucket).getPublicURL(
       path: path, download: true, fileName: "test",
       options: TransformOptions(width: 300, height: 300))
     XCTAssertEqual(
       baseUrlWithAllOptions.absoluteString,
-      "\(Self.supabaseURL)/render/image/public/\(path)?download=test&width=300&height=300&resize=cover&quality=80&format=origin"
+      "\(Self.supabaseURL)/render/image/public/\(bucket)/\(path)?download=test&width=300&height=300&resize=cover&quality=80&format=origin"
+    )
+  }
+
+  private func uploadTestData() async throws {
+    let file = File(
+      name: "README.md", data: uploadData, fileName: "README.md", contentType: "text/html")
+    _ = try await storage.from(id: bucket).upload(
+      path: "README.md", file: file, fileOptions: FileOptions(cacheControl: "3600")
     )
   }
 }
