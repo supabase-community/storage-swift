@@ -205,28 +205,45 @@ public class StorageFileApi: StorageApi {
   ///  - download: Whether the asset should be downloaded.
   ///  - fileName: If specified, the file name for the asset that is downloaded.
   ///  - options: Transform the asset before retrieving it on the client.
-  public func getPublicUrl(
+  public func getPublicURL(
     path: String,
     download: Bool = false,
     fileName: String = "",
     options: TransformOptions? = nil
   ) throws -> URL {
+    var queryItems: [URLQueryItem] = []
+
     guard var components = URLComponents(string: url) else {
       throw StorageError(message: "badURL")
     }
 
+    if download {
+      queryItems.append(URLQueryItem(name: "download", value: fileName))
+    }
+
+    if let optionsQueryItems = options?.queryItems {
+      queryItems.append(contentsOf: optionsQueryItems)
+    }
+
     let renderPath = options != nil ? "render/image" : "object"
 
-    let downloadQueryItem = download ? [URLQueryItem(name: "download", value: fileName)] : []
-    let optionsQueryItems = options?.queryItems ?? []
-
-    components.path = "/\(renderPath)/public/\(path)"
-    components.queryItems = downloadQueryItem + optionsQueryItems
+    components.path += "/\(renderPath)/public/\(bucketId)/\(path)"
+    components.queryItems = !queryItems.isEmpty ? queryItems : nil
 
     guard let generatedUrl = components.url else {
       throw StorageError(message: "badUrl")
     }
 
     return generatedUrl
+  }
+
+  @available(*, deprecated, renamed: "getPublicURL")
+  public func getPublicUrl(
+    path: String,
+    download: Bool = false,
+    fileName: String = "",
+    options: TransformOptions? = nil
+  ) throws -> URL {
+    try getPublicURL(path: path, download: download, fileName: fileName, options: options)
   }
 }
