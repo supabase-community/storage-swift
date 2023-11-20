@@ -1,5 +1,9 @@
 # `storage-swift`
 
+> [!WARNING]  
+> This repository is deprecated and it was moved to the [monorepo](https://github.com/supabase-community/supabase-swift).
+> Repository will remain live to support old versions of the library, but any new updates **MUST** be done on the monorepo.
+
 Swift Client library to interact with Supabase Storage.
 
 ## `Prelude: RLS`
