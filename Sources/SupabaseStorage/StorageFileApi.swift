@@ -126,6 +126,43 @@ public class StorageFileApi: StorageApi {
     return signedURL
   }
 
+  /// Create multiple signed URLs to download files without requiring permissions. These URLs can be valid
+  /// for a set number of seconds.
+  /// - Parameters:
+  ///   - paths: The file paths to be downloaded, including the current file name. For example
+  /// `folder/image.png`.
+  ///   - expiresIn: The number of seconds until the signed URLs expire. For example, `60` for URLs
+  /// which are valid for one minute.
+  public func createSignedURLs(paths: [String], expiresIn: Int) async throws -> [String: URL?] {
+    guard let url = URL(string: "\(url)/object/sign/\(bucketId)") else {
+      throw StorageError(message: "badURL")
+    }
+
+    let response = try await fetch(
+      url: url,
+      method: .post,
+      parameters: ["expiresIn": expiresIn, "paths": paths],
+      headers: headers
+    )
+    guard let dicts = response as? [[String: Any]] else {
+      throw StorageError(message: "failed to parse response")
+    }
+    var values: [String: URL?] = [:]
+    for dict in dicts {
+      guard let path = dict["path"] as? String else {
+        continue
+      }
+      let signedURL: URL?
+      if let signedURLString = dict["signedURL"] as? String {
+        signedURL = URL(string: self.url.appending(signedURLString))
+      } else {
+        signedURL = nil
+      }
+      values[path] = signedURL
+    }
+    return values
+  }
+
   /// Deletes files within the same bucket
   /// - Parameters:
   ///   - paths: An array of files to be deletes, including the path and file name. For example
