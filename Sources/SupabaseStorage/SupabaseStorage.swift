@@ -3,14 +3,16 @@ public class SupabaseStorageClient: StorageBucketApi {
   /// - Parameters:
   ///   - url: Storage HTTP URL
   ///   - headers: HTTP headers.
-  override public init(url: String, headers: [String: String], http: StorageHTTPClient? = nil) {
-    super.init(url: url, headers: headers, http: http ?? DefaultStorageHTTPClient())
+  override public init(
+    url: String, headers: [String: String], session: StorageHTTPSession = .init()
+  ) {
+    super.init(url: url, headers: headers, session: session)
   }
 
   /// Perform file operation in a bucket.
   /// - Parameter id: The bucket id to operate on.
   /// - Returns: StorageFileApi object
   public func from(id: String) -> StorageFileApi {
-    StorageFileApi(url: url, headers: headers, bucketId: id, http: http)
+    StorageFileApi(url: url, headers: headers, bucketId: id, session: session)
   }
 }
